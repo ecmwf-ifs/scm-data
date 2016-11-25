@@ -12,6 +12,9 @@ ddt /tmp/data/scm-data/install/scm-data/bin/getini1c
 valgrind /tmp/data/scm-data/install/scm-data/bin/getini1c
 
 To add debug info on the executable:
+
 cd into the directory ... builds/scm-data
+
 cmake . -DCMAKE_BUILD_TYPE=debug
+
 make install
