@@ -1,0 +1,142 @@
+#!/bin/ksh
+
+# set -e      #  exit on error
+# set -vx     #  for debug (output script progress)
+set -avex
+
+#    1.  Set defaults for parameters
+#        ---------------------------
+ 
+DATE=''
+TIME=''
+errflg=0
+USAGE=" getini1c_vpp_mars -d date -s step -l lev"
+set -ea
+#
+#------------------------------------------------------------------------
+#
+#     2.   Crack parameters
+#          ----------------
+#
+while getopts d:s:t:l: option
+do
+   case $option in
+   l) LEVELS=$OPTARG;;
+   d) DATE=$OPTARG;;
+   t) TIME=$OPTARG;;
+   s) STEP=$OPTARG;;
+  \?) errflg=1;;
+   esac
+done
+#
+#------------------------------------------------------------------------
+#
+#     3.   Check parameters, issue error messages.
+#          ---------------------------------------
+#
+if [ $errflg -ne 0 ]
+then
+     echo $USAGE >&2
+     exit 2
+fi
+#
+if [ "$DATE" = "" ]
+then
+     echo $0:" date (YYYYMMHH) must be specified!" >&2
+     exit 2
+fi
+#
+#
+#------------------------------------------------------------------------
+#
+#     4.   MARS retrievals.
+#          ----------------
+#
+#
+
+parspec="VO/D/T/W/LNSP"
+parsfc="STL1/STL2/STL3/STL4/SWVL1/SWVL2/SWVL3/SWVL4/ISTL1/ISTL2/ISTL3/ISTL4/SD/SRC/SKT/CI/SSTK/TSN/ASN/RSN"
+parcld="Q/CC/CLWC/CIWC"
+alb="/15/16/17/18"
+
+#------------------------------------------------------------------------
+
+# ... data on hard disk ($TMPDIR)
+spec=spec_grib
+sfc=sfc_grib
+cld=cld_grib
+
+if [ $DATE -ge 19990930 ] && [ $DATE -le 20000831 ]
+then
+  class=rd
+  exp=\"edzx\"
+elif [ $DATE -gt 20000831 ] && [ $DATE -le 20001120 ]
+then
+  class=rd
+  exp=\"ega0\"
+else
+  class=od
+  exp=0001
+fi
+
+# ERA-I:
+class=ei
+exp=1
+
+si=`echo $STEP | cut -d "/" -f1`
+sf=`echo $STEP | cut -d "/" -f2-`
+
+/bin/rm -f sfc_grib spec_grib cld_grib cld_grib_*$DATE spec_grib_*$DATE sfc_grib_*$DATE
+
+if [ $si -eq "0" ]
+then
+cat > bar << EOF
+ retrieve,
+  class=$class,expver=$exp,
+  date=$DATE,time=$TIME,type=an,
+  LEVTYP=SFC,LEVEL=OFF,
+  TARGET="${sfc}_[DATE][TIME]_0",
+  PARAM=$parsfc
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${spec}_[DATE][TIME]_0",
+  PARAM=$parspec
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${cld}_[DATE][TIME]_0",
+  PARAM=$parcld
+ retrieve,
+  class=$class,expver=$exp,
+  date=$DATE,time=$TIME,type=fc,step=$sf,
+  LEVTYP=SFC,LEVEL=OFF,
+  TARGET="${sfc}_[DATE][TIME]_[STEP]",
+  PARAM=$parsfc
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${spec}_[DATE][TIME]_[STEP]",
+  PARAM=$parspec
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${cld}_[DATE][TIME]_[STEP]",
+  PARAM=$parcld
+EOF
+else
+cat > bar << EOF
+ retrieve,
+  class=$class,expver=$exp,
+  date=$DATE,time=$TIME,type=fc,step=$STEP,
+  LEVTYP=SFC,LEVEL=OFF,
+  TARGET="${sfc}_[DATE][TIME]_[STEP]",
+  PARAM=$parsfc
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${spec}_[DATE][TIME]_[STEP]",
+  PARAM=$parspec
+ RETRIEVE,
+  LEVTYP=ML,LEVEL=1/TO/${LEVELS},
+  TARGET="${cld}_[DATE][TIME]_[STEP]",
+  PARAM=$parcld
+EOF
+fi
+
+mars bar

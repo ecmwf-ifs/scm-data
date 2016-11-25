@@ -1,0 +1,254 @@
+#!/bin/ksh
+set -ex
+###############################################################################
+#     getini1c_setup_cycle
+#
+#     Purpose : Get  1) profiles of atmospheric and surface variables
+#     -------        2) Large scale forcing (advection and geostrophic wind)
+#                    3) other SCM boundary conditions
+#               for use by the Single Column Model.
+#
+#
+#     Troubleshouting :
+#     ---------------  
+#        * no clouds available in simulation (246,247,248)
+#          - in getini1c_setup_cycle set GETCLD=1
+#          - clouds are used for initialization in SCM -> not important
+#        * debug: dbx -I source getini1c.x core
+#
+###############################################################################
+#....SGP97_CF01 data 1997060100-1997073118 ....
+# location:        lat= 36.605 N
+#                  lon= 97.485 W
+#
+# time:            DATE= 19970601-19970731
+#                  TIME=00/06/12/18
+#                  STEP=0   (AN)
+#
+# simulation used: e40, first pass stream 1, T159L60
+#                  expver=0018, stream=oper, class=e4
+###############################################################################
+#
+#
+###############################################################################
+#
+# Chilbolton CloudNet site
+#
+# location  lat = 51.14
+#           lon = -1.44
+#
+#    20060323 Roel Neggers
+#
+###############################################################################
+set -avex
+
+#----------------
+# data definition
+#----------------
+
+ulimit -a
+
+RESOL=255
+GTYPE=l_2
+GRID=N128
+#GTYPE=l_2
+#GRID=N640
+LEVELS=60
+#distance in degrees acceptable to find nearest point to specified lat-lon
+# important to select large enough envelope
+ZDELTA=0.75
+CYCLE=41r2
+#CYCLE=40r1
+# CYCLE=31r2
+CLIMVERSION=climate
+
+
+#datebeg=20160308
+datebeg=`echo 20110806`
+dateend=${datebeg}
+
+echo $datebeg
+echo $dateend
+
+WSHOST=ecgate
+#WSHOST=lxab
+#WSHOST=janus
+
+dataid1='valid'
+#dataid2='t799_2006'
+dataid2='t255'
+
+date=$datebeg
+DATES=$datebeg
+#while [ $date -lt $dateend ]
+#do
+#  date=`newdate -D $date 1 | cut -c 1-8`
+#  DATES=${DATES}/$date
+#done
+
+numpt=1
+
+
+datefirst=${datebeg}
+
+GETCLD=1                          # set GETCLD=0 if no initial clouds needed
+                                  # set GETCLD=1 for initial clouds
+GETFLX=1                          # set GETFLX=1 for flux condition
+
+# de_aar -30.65 24.0 (high point 2000m)
+# eskilstuna 59.55 15.57
+# ljubljana 46.1 14.5
+
+
+# ===========   definition area  ==========================
+# CHANGE !!!!!!!!!!!!
+TIMESM='00'    # Start at midnight
+#TIME='00'/'06'/'12'/'18'  #'12'   #  Start at noon
+set -A station abisko
+set -A latall -- 68.36   # more stations to be separated by spaces:
+set -A lonall -- 18.78   #   set -A latall --  71.20  71.34
+lat='68.36'   # add more stations separated by comma, i.e. 'xx.xx,yy.yy,zz.zz'
+lon='18.78'   # add more stations separated by comma
+#STEPS=00/01/02/03/04/05/06/07/08/09/10/11/12/13/14/15/16/17/18/19/20/21/22/23/24/25/26/27/28/29/30/31/32/33/34/35/36
+#STEPS=00/03
+STEPS=00/
+#STEPESM=00
+#STEPS=00/03/06/09/12/15/18/21/24
+#tstep=3600.
+tstep=10800.
+
+# ===========   end of definition area  ==========================
+
+
+# override steps for testing
+#STEPS=00/03/06/09/12/15/18
+
+  cat << EOF > ss
+s/\// /gp
+EOF
+STEPSM=`echo $STEPS | sed -n -f ss`
+
+#  cat << EOF > ss
+#s/\// /gp
+#EOF
+#TIMESM=`echo $TIME | sed -n -f ss`
+
+#parallel setup
+export MBX_SIZE=200000000
+export MPL_MBX_SIZE=200000000
+export MP_WAIT_MODE=poll
+export MP_LABELIO=yes
+export MP_SHARED_MEMORY=yes
+export MP_ADAPTER_USE=shared
+export MP_PROCS=1
+export MALLOCMULTIHEAP=heaps:2,considersize
+export XLSMPOPTS='parthds=8:stack=1000000000 : spins=500000 : yields=50000 '
+export OMP_STACKSIZE=256M
+export OMP_NUM_THREADS=8
+export XLFRTEOPTS=buffering=disable_all:err_recovery=no
+
+# needed for run_parallel script
+export PROFILE=0
+export DEBUG=0
+#export EXPVER=naw
+export EXPVER=sua
+export RUN_PARALLEL=true
+#export LIBS=/home/rd/rdx/lib/41r2
+export LIBS=/home/rd/rdx/lib/$CYCLE
+#export LIBS=/home/rd/rdx/lib/$CYCLE'C_eras'
+
+## http://cms.ncas.ac.uk/ticket/1744
+#module unload atp
+#module load atp/1.8.3 
+
+/bin/rm -f scm_in_*.nc || true
+nstep=-1
+date=$datebeg
+while [ $date -le $dateend ]
+do
+  for time in $TIMESM
+  do
+
+#...run processing - single step............................
+#    getini1c_mars_run_validation_SCM_FC -d $date -t $time -s $STEPS
+#    /home/rd/rdx/bin/ibm_power4/30r2/timeint -d ${date}${time} -c 174 \
+#     -i /home/rd/rdx/data/30r2/climate/799l_2/month_alb -o alb
+     
+    prognostic='.true.'
+
+    for step in $STEPSM
+    do
+      let nstep=nstep+1   || true
+      typeset -i tt
+      typeset -i ss
+      tt=${time}00
+      ss=$step
+      echo ${tt}
+      echo ${time}
+
+      cat /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/sporog >> spec_grib_${date}${tt}_${ss}
+      cat /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/sfc \
+       /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/sdfor \
+       /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/clake \
+		/home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/lakedl \
+       /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/slt \
+       /home/rd/rdx/data/${CYCLE}/${CLIMVERSION}/${RESOL}${GTYPE}/lsmoro \
+	lail_int laih_int  alb aluvp_int aluvd_int alnip_int alnid_int >> sfc_grib_${date}${tt}_${ss}
+      /bin/rm -f spec_grib cld_grib sfc_grib || true
+      ln -s spec_grib_${date}${tt}_${ss} spec_grib
+      ln -s cld_grib_${date}${tt}_${ss} cld_grib
+      ln -s sfc_grib_${date}${tt}_${ss} sfc_grib
+
+      dataid=${dataid1}_${dataid2}
+      cat << EOF > namelist_1c
+       &NAMUS
+      LAT=$lat,
+      LON=$lon,
+      lprognostic=$prognostic,
+      TSTEP  = $tstep,
+      DATAID = '$dataid',
+      NSMAX  = $RESOL,
+      CGRID = '$GRID',
+      NLEV  = $LEVELS,
+      DELTA = $ZDELTA,
+EOF
+  cat /home/rd/rdx/data/ifs/vtable_L$LEVELS | grep -v NAM >> namelist_1c
+
+
+#  $TMPDIR/run_parallel /home/rd/nag/bin/getini1c 1>listing.out 2>&1 || {
+#          echo 'ABORT ***'
+#          cat listing.out || true
+#          exit 1
+#      }
+#      cat listing.out || true
+
+    done
+  
+    
+  done
+  
+  date=`newdate -D $date 1 | cut -c 1-8`
+
+done
+
+#note that this loop only works if station IDs unique
+for i in scm_in_*.nc
+do
+  d1=`echo $i | cut -c1-7`
+  proc=`echo $i | cut -c8-11`
+  d2=`echo $i | cut -c13-14`
+  dataid=${dataid1}${d2}_${dataid2}
+  d=$((d2-1))
+  scp $i ${WSHOST}:$SCMDATA/${station[$d]}_${datebeg}.nc
+done
+\rm -f inidata.tar inidata.tar.gz
+#tar -cvf inidata.tar scm_in_*.nc || true
+#gzip inidata.tar || true
+#if [ no = yes ] ; then
+#  ecp -o inidata.tar.gz ec:/RDX/prepIFS/SCM/inidata.${datebeg}${TIMESM}.tar.gz || true
+#fi
+#/bin/rm -f spec_grib_${datebeg}*
+#/bin/rm -f cld_grib_${datebeg}*
+#/bin/rm -f sfc_grib_${datebeg}*
+
+text='getini1c for '${dataid}' completed'

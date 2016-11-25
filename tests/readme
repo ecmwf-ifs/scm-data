@@ -1,0 +1,13 @@
+# NOTE: For testing you may want to reduce the JPMAXGRID dimensions (set for TCo1279) in
+#       read_grib_scm.F90 interface/read_grib_scm.h
+#
+
+mpirun -np 4 /tmp/data/develop/scmdata/install/scmdata/bin/getini1c 1>log 2>&1
+
+ddt /tmp/data/develop/scmdata/install/scmdata/bin/getini1c
+valgrind /tmp/data/develop/scmdata/install/scmdata/bin/getini1c
+
+for debug info in executable
+cd /fwsm/lb/user/naw/scm/develop/scmdata/builds/scmdata
+cmake . -DCMAKE_BUILD_TYPE=debug
+make install
