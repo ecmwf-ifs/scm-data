@@ -14,6 +14,8 @@ subroutine compute_fields(myproc,nb_locations,locations,klev,pvah,pvbh,&
 
 !-------------------------------------------------------------------------
 use, intrinsic :: iso_C_binding
+use fckit_mpi_module, only : fckit_mpi_comm
+use fckit_log_module, only : log
 use atlas_module
 use yomvar
 implicit none
@@ -53,10 +55,15 @@ REAL(KIND=JPRB) :: zslat_p
 REAL(KIND=JPRB) :: zdudx(klev), zdudy(klev), zdvdx(klev), zdvdy(klev)
 REAL(KIND=JPRB)    :: zdeg2rad,zzaux, zdir, zpi
 
+CHARACTER*127 msg
+type(fckit_mpi_comm) :: mpi_comm
+
 TYPE(TPARAM), POINTER :: PX
 
 #include "calcgeost.h"
 !-------------------------------------------------------------------------
+
+mpi_comm = fckit_mpi_comm()
 
 ! need minus as advective forcing on rhs
 zdir = -1.0_jprb
@@ -157,7 +164,7 @@ do jfld=1,isize
       CASE (138)
         PX%PROT(ilev) = values(inode) ! store locally
       CASE DEFAULT
-        write(atlas_log%msg,'(A, I0)') " WARNING: UNKNOWN FIELD PARAMETER ", iparam; call atlas_log%info(atlas_log%msg)
+        write(msg,'(A, I0, I0)') " GP_FROM_SP WARNING: UNKNOWN FIELD (PARAMETER , LEVEL) ", iparam, ilev ; call log%info(msg)
       END SELECT
     endif
   enddo
@@ -228,13 +235,14 @@ do jfld=1,isize
         PX%PCAL(ilev)  = grad_data(1,inode)
         PX%PCAM(ilev) = grad_data(2,inode)
       CASE DEFAULT
-        write(atlas_log%msg,'(A, I0)') " WARNING: UNKNOWN FIELD PARAMETER ", iparam; call atlas_log%info(atlas_log%msg)
+!        write(msg,'(A, I0,' ', I0)') " GPFIELDS WARNING, NOT USED (PARAMETER , LEVEL)", iparam,ilev ; call log%info(msg)
       END SELECT
     endif
   enddo
 enddo
 
-call atlas_mpi_barrier(atlas_mpi_comm())
+call mpi_comm%barrier()
+
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     inode = locations(iloc)%ILOC

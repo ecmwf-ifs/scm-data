@@ -3,8 +3,9 @@ subroutine compute_fields(myproc,nb_locations,locations,klev,pvah,pvbh,&
 			  & fvm,nodepoints, windfield,gpfields_from_sp,gridpoints,gpfields)
 
 use, intrinsic :: iso_C_binding
+use fckit_mpi_module, only : fckit_mpi_comm
+use fckit_log_module, only : log
 use atlas_module
-use atlas_mpi_module
 use yomvar
 
 implicit none

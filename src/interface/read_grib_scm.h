@@ -3,10 +3,11 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 		     & spectral, spfields, gridpoints, gpfields)
 
 use, intrinsic :: iso_C_binding
-
+use fckit_mpi_module, only : fckit_mpi_comm
+use fckit_log_module, only : log
 use atlas_module, only : atlas_Field, atlas_FieldSet, atlas_functionspace_StructuredColumns, atlas_functionspace_Spectral, &
- & atlas_Metadata, atlas_real, atlas_mpi_size
-USE GRIB_API, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_RELEASE, & 
+ & atlas_Metadata, atlas_real
+USE grib_api, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_GET_SIZE, GRIB_RELEASE, & 
   & GRIB_OPEN_FILE, GRIB_COUNT_IN_FILE, GRIB_CLOSE_FILE, GRIB_SUCCESS
 USE MPL_MODULE, only : mpl_init, mpl_broadcast, mpl_send, mpl_recv, &
   & mpl_barrier, mpl_wait,jp_non_blocking_standard, jp_blocking_standard
@@ -14,8 +15,8 @@ use yomvar
 
 implicit none
 
-INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
-!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
+INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
+!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
 
 LOGICAL, intent(in) :: LSINGLE
 INTEGER(KIND=JPIM),intent(in) :: MYPROC

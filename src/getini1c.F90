@@ -6,17 +6,18 @@
 !     Nils Wedi,  March 2016
 !     
 !    The program is a rewrite based on Atlas data structures (Willem Deconinck)
-!    and previous contributions by Martin Koehler, Gisela Seuffert, Pedro Viterbo, Nils Wedi
+!    previous contributions by Martin Koehler, Gisela Seuffert, Pedro Viterbo, Nils Wedi
 !....................................................................... 
 
 ! the main execution routine (program is at the end)
 subroutine run( return_code )
 
 use, intrinsic :: iso_C_binding
+use fckit_mpi_module, only : fckit_mpi_comm
+use fckit_log_module, only : log
 use atlas_module, only: atlas_Config, atlas_grid_Structured, atlas_Mesh, atlas_mesh_Nodes, atlas_MeshGenerator, &
  & atlas_Trans, atlas_functionspace_Spectral, atlas_fvm_Method, atlas_functionspace_NodeColumns, atlas_Field, atlas_FieldSet, &
- & atlas_Metadata, atlas_log, atlas_mpi_size,  atlas_mpi_proc, atlas_real, atlas_meshgenerator_Structured, atlas_mpi_comm, &
- & atlas_functionspace_StructuredColumns
+ & atlas_Metadata, atlas_real, atlas_meshgenerator_Structured, atlas_functionspace_StructuredColumns
 use yomvar
 
 implicit none
@@ -56,6 +57,9 @@ INTEGER(KIND=JPIM) :: NPROC, MYPROC
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:), PVBH(:)
 REAL(KIND=JPRB), ALLOCATABLE :: zlat(:), zlon(:)
 
+CHARACTER*127 msg
+type(fckit_mpi_comm) :: mpi_comm
+
 #include "rdnam.h"
 #include "nearest_distance.h"
 #include "read_grib_scm.h"
@@ -64,11 +68,13 @@ REAL(KIND=JPRB), ALLOCATABLE :: zlat(:), zlon(:)
 #include "su_wrt_nc.h"
 #include "wrt1c_nc.h"
 
-call atlas_log%info("getini1c: start")
+write(msg,'(A)')  "getini1c: start"
+call log%info(msg)
 
+mpi_comm = fckit_mpi_comm()
 ! processor
-NPROC  = atlas_mpi_size()
-MYPROC = atlas_mpi_proc()
+NPROC  = mpi_comm%size()
+MYPROC = mpi_comm%rank() + 1 
 
 !        1.   read namelist on points list, grid info, netcdf info
 !             ---------------------------------------------------------------------------
@@ -98,11 +104,11 @@ do j=1, nb_locations
   locations(j)%IPROC = -1
 enddo
 
-write(atlas_log%msg,'(A,I0)') "nb_locations = ",nb_locations; call atlas_log%info(atlas_log%msg)
-write(atlas_log%msg,'(A,F5.3)') "zdelta = ",zdelta; call atlas_log%info(atlas_log%msg)
-write(atlas_log%msg,'(A,I0)') "nlev = ",nlev; call atlas_log%info(atlas_log%msg)
-write(atlas_log%msg,'(A,I0)') "nsmax = ",nsmax; call atlas_log%info(atlas_log%msg)
-write(atlas_log%msg,'(A,A)') "cgrid = ",cgrid; call atlas_log%info(atlas_log%msg)
+write(msg,'(A,I0)') "nb_locations = ",nb_locations; call log%info(msg)
+write(msg,'(A,F5.3)') "zdelta = ",zdelta; call log%info(msg)
+write(msg,'(A,I0)') "nlev = ",nlev; call log%info(msg)
+write(msg,'(A,I0)') "nsmax = ",nsmax; call log%info(msg)
+write(msg,'(A,A)') "cgrid = ",cgrid; call log%info(msg)
 
 !        2.   set up necessary info on gg and sh fields
 !             --------------------------------------------------------------
@@ -126,27 +132,27 @@ lonlatField = nodes%lonlat()
 call lonlatField%data(lonlat)
 ghostField = nodes%ghost()
 call ghostField%data(ghost)
-write(atlas_log%msg,'(A,I0,1X, I0)') "ndes , lonlat%size", nb_nodes, lonlatField%size()/2; call atlas_log%info(atlas_log%msg)
+write(msg,'(A,I0,1X, I0)') "ndes , lonlat%size", nb_nodes, lonlatField%size()/2; call log%info(msg)
 
 call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
 do j=1, nb_locations
   if( myproc == locations(j)%iproc ) then
-    write(atlas_log%msg,'(A,I0)') "nearest point proc ", locations(j)%IPROC ; call atlas_log%info(atlas_log%msg)
-!    write(atlas_log%msg,'(A,I0,2(1X,F8.4))') "nearest point lon ", j,locations(j)%RLONI, ZLON(j) ; call atlas_log%info(atlas_log%msg)
-!    write(atlas_log%msg,'(A,I0,2(1X,F8.4))') "nearest point lat ", j,locations(j)%RLATI, ZLAT(j) ; call atlas_log%info(atlas_log%msg)
-!    write(atlas_log%msg,'(A,I0,1X, I0)') "nearest point knode ", j,locations(j)%iloc ; call atlas_log%info(atlas_log%msg)
+    write(msg,'(A,I0)') "nearest point proc ", locations(j)%IPROC ; call log%info(msg)
+!    write(msg,'(A,I0,2(1X,F8.4))') "nearest point lon ", j,locations(j)%RLONI, ZLON(j) ; call log%info(msg)
+!    write(msg,'(A,I0,2(1X,F8.4))') "nearest point lat ", j,locations(j)%RLATI, ZLAT(j) ; call log%info(msg)
+!    write(msg,'(A,I0,1X, I0)') "nearest point knode ", j,locations(j)%iloc ; call log%info(msg)
 !    write(*,*) 'test if unique proc: ', myproc, locations(j)%iloc, locations(j)%RLONI, locations(j)%RLATI
   endif
 enddo
-write(atlas_log%msg,'(A)') "finished nearest distances "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') "finished nearest distances "; call log%info(msg)
 
-write(atlas_log%msg,'(A,I0)') "grid%N()      = ",grid%N();      call atlas_log%info(atlas_log%msg)
-write(atlas_log%msg,'(A,I0)') "grid%npts()   = ",grid%npts();   call atlas_log%info(atlas_log%msg)
+write(msg,'(A,I0)') "grid%N()      = ",grid%N();      call log%info(msg)
+write(msg,'(A,I0)') "grid%npts()   = ",grid%npts();   call log%info(msg)
 
 ! this is the functionspace nodepoints
 fvm  = atlas_fvm_Method(mesh, config)
 nodepoints = fvm%node_columns()
-write(atlas_log%msg,'(A,A)') "finished Atlas fvm function space"; call atlas_log%info(atlas_log%msg)
+write(msg,'(A,A)') "finished Atlas fvm function space"; call log%info(msg)
 
 ! for reading we also create a functionspace gridpoints
 gridpoints = atlas_functionspace_StructuredColumns(grid)
@@ -177,7 +183,7 @@ call read_grib_scm(LSINGLE,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,
 ! Setup spectral transforms
 trans = atlas_Trans(grid,nsmax)
 spectral   = atlas_functionspace_Spectral(trans)
-write(atlas_log%msg,'(A,I0)') "trans%nsmax() = ",trans%nsmax(); call atlas_log%info(atlas_log%msg)
+write(msg,'(A,I0)') "trans%nsmax() = ",trans%nsmax(); call log%info(msg)
 
 ! read upper air fieldset (spectral)
 file=' '
@@ -185,7 +191,7 @@ write(file,'(A)') 'spec_grib '
 spfields = atlas_FieldSet("spectral")
 call read_grib_scm(LSINGLE,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
 
-write(atlas_log%msg,'(A)') " finished I/O"; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " finished I/O"; call log%info(msg)
 
 gpfields_from_sp = atlas_FieldSet("nodepoints")
 isize = spfields%size()
@@ -203,10 +209,10 @@ do jfld=1,isize
   call metadata%set("level",ilev)
   call gpfields_from_sp%add( field )
 enddo
-write(atlas_log%msg,'(A)') " inverse transform starting "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " inverse transform starting "; call log%info(msg)
 !call trans%invtrans(spfields,gpfields_from_sp)
 call trans%invtrans(spectral,spfields,nodepoints,gpfields_from_sp)
-write(atlas_log%msg,'(A)') " inverse transform finished "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " inverse transform finished "; call log%info(msg)
 
 ! copy vor/div into level structure before transform to u/v
 vorfield = spectral%create_field("vorticity",atlas_real(JPRB),nlev)
@@ -227,9 +233,9 @@ do jfld=1,isize
     div(ilev,:) = ffvalues(:)
   endif
 enddo
-write(atlas_log%msg,'(A)') " inverse wind transform starting "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " inverse wind transform starting "; call log%info(msg)
 call trans%invtrans_vordiv2wind(spectral,vorfield,divfield,nodepoints,windfield)
-write(atlas_log%msg,'(A)') " inverse wind transform finished "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " inverse wind transform finished "; call log%info(msg)
 
 
 ! here we need a computation at given locations directly from spectral coefficients of the scalars vor/div/omega/z/lnsp/T
@@ -242,28 +248,27 @@ write(atlas_log%msg,'(A)') " inverse wind transform finished "; call atlas_log%i
 
 ! needs then modification to compute_fields to remove gradient calls ... 
 
-write(atlas_log%msg,'(A)') " compute fields "; call atlas_log%info(atlas_log%msg)
+write(msg,'(A)') " compute fields "; call log%info(msg)
 call compute_fields(myproc,nb_locations,locations(1:nb_locations),nlev,&
  &pvah,pvbh,fvm,nodepoints, windfield,gpfields_from_sp, gridpoints, gpfields)
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     ! netcdf write this location from this processor
     if (.not.larea) then
-      write(atlas_log%msg,'(A)') " setting up output fields to netcdf  "; call atlas_log%info(atlas_log%msg)
-!      write(atlas_log%msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call atlas_log%info(atlas_log%msg)
-!      write(atlas_log%msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call atlas_log%info(atlas_log%msg)
-!      write(atlas_log%msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call atlas_log%info(atlas_log%msg)
-!      write(atlas_log%msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call atlas_log%info(atlas_log%msg)
-!      write(atlas_log%msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call atlas_log%info(atlas_log%msg)
+      write(msg,'(A)') " setting up output fields to netcdf  "; call log%info(msg)
+!      write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%info(msg)
+!      write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%info(msg)
+!      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%info(msg)
+!      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%info(msg)
+!      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%info(msg)
       CALL SU_WRT_NC (myproc,PVAH,PVBH,dataid,iloc,locations(iloc)%IFILE_ID,nlev)
-      write(atlas_log%msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE 
-      call atlas_log%info(atlas_log%msg)
+      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE 
+      call log%info(msg)
       CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
     endif
   endif
 enddo
-write(atlas_log%msg,'(A)') " finished, cleaning up! "; call atlas_log%info(atlas_log%msg)
-!call atlas_mpi_barrier(atlas_mpi_comm())
+write(msg,'(A)') " finished, cleaning up! "; call log%info(msg)
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     call DEALLOCATE_COLUMNS(locations(iloc)%PP)
@@ -281,7 +286,8 @@ call mesh%final()
 call grid%final()
 call meshgenerator%final()
 
-call atlas_log%info("getini1c: end")
+ write(msg,'(A)')  "getini1c: end"
+call log%info(msg)
 
 end subroutine run
 

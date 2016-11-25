@@ -10,9 +10,11 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 
 use, intrinsic :: iso_C_binding
 
+use fckit_mpi_module, only : fckit_mpi_comm
+use fckit_log_module, only : log
 use atlas_module, only : atlas_Field, atlas_FieldSet, atlas_functionspace_StructuredColumns, atlas_functionspace_Spectral, &
- & atlas_Metadata, atlas_real, atlas_mpi_size, atlas_log
-USE GRIB_API, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_RELEASE, & 
+ & atlas_Metadata, atlas_real 
+USE GRIB_API, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_GET_SIZE, GRIB_RELEASE, & 
  & GRIB_OPEN_FILE, GRIB_COUNT_IN_FILE, GRIB_CLOSE_FILE, GRIB_SUCCESS
 USE MPL_MODULE, only : mpl_init, mpl_broadcast, mpl_send, &
 & mpl_recv, mpl_barrier, mpl_wait, jp_non_blocking_standard, jp_blocking_standard
@@ -21,8 +23,8 @@ use yomvar
 IMPLICIT NONE
 
 ! testing dimensions
-!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
-INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
+INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
+!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
 
 LOGICAL, intent(in) :: LSINGLE
 INTEGER(KIND=JPIM),intent(in) :: MYPROC
@@ -36,11 +38,14 @@ type(atlas_functionspace_Spectral), intent(in) :: spectral
 TYPE(TINFO), intent(inout) :: INFO
 LOGICAL, intent(in) :: lprognostic,larea
 
+type(fckit_mpi_comm) :: mpi_comm
+
 REAL(KIND=JPRB) :: ZINDEF
      
 INTEGER(KIND=JPIM) :: IGRIB_IN, ibitmap
 INTEGER(KIND=JPIM) :: ISTARTSTEP, IENDSTEP
 CHARACTER*127 CGRIDTYPE,CLEVTYPE,CSTEPTYPE
+CHARACTER*127 msg
 
 INTEGER(KIND=JPIM) :: j, iret, ifi, ifo, ilenf, iparam, ilev, idate, itime, istep, itag, iflds, isp, itot, jfld
 
@@ -70,7 +75,8 @@ REAL(KIND=c_double), POINTER :: locdata(:)
 IOMASTER=1_JPIM
 ! set to 1 if not to use IOMASTER FOR DECODING
 IO_SHIFT = 0
-NPROC = atlas_mpi_size()
+mpi_comm = fckit_mpi_comm()
+NPROC = mpi_comm%size() 
 IF( NPROC > 1 ) IO_SHIFT = 1
 CALL MPL_INIT()
 ITAG = 123456
@@ -403,7 +409,9 @@ if( .not.(gridpoints%is_null()) ) then
     ENDIF
   ENDDO
 
-  write(atlas_log%msg,'(A)') " gridpoint scatter finished "; call atlas_log%info(atlas_log%msg)
+  write(msg,'(A)')  " gridpoint scatter finished "
+  call log%info(msg)
+!  write(msg,'(A)') " gridpoint scatter finished "; call log%info(msg)
 
 endif
 
@@ -449,7 +457,7 @@ if( .not.(spectral%is_null()) ) then
     ENDDO
   ENDDO
 
-  write(atlas_log%msg,'(A)') " spectral scatter finished "; call atlas_log%info(atlas_log%msg)
+  write(msg,'(A)') " spectral scatter finished "; call log%info(msg)
 
 endif
 

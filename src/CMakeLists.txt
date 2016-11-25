@@ -17,12 +17,10 @@ ecbuild_add_executable( TARGET getini1c
                         INCLUDES
                                 interface/
                                 ${ATLAS_INCLUDE_DIRS}
-                                ${GRIB_API_INCLUDE_DIRS}
+                                ${ECCODES_INCLUDE_DIRS}
                                 ${NETCDF_INCLUDE_DIRS}
-                                ${TRANS_INCLUDE_DIRS}
                         LIBS 
-                                trans
                                 atlas_f
-                                grib_api_f90
+                                eccodes_f90
                                 ${NETCDF_LIBRARIES}
                       )

@@ -22,13 +22,6 @@ ecbuild_requires_macro_version( 1.9 )
 ecbuild_declare_project()
 ecbuild_enable_fortran( REQUIRED MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/module )
 
-ecbuild_add_option( FEATURE TRANS
-                    DESCRIPTION "scm: Support for spectral transforms"
-                    REQUIRED_PACKAGES "PROJECT trans" )
-if( NOT HAVE_TRANS )
-    ecbuild_error( "The scm executables require the trans library")
-endif()
-
 ecbuild_add_option( FEATURE ATLAS
                     DESCRIPTION "scm: Support for atlas"
                     REQUIRED_PACKAGES "PROJECT atlas" )
@@ -38,9 +31,9 @@ endif()
 
 ecbuild_add_option( FEATURE GRIB
                     DESCRIPTION "scm: Support for grib data format"
-                    REQUIRED_PACKAGES "PROJECT grib_api VERSION 1.14.3" )
+                    REQUIRED_PACKAGES "PROJECT eccodes" )
 if( NOT HAVE_GRIB )
-    ecbuild_error( "The scm executables require grib_api")
+    ecbuild_error( "The scm executables require eccodes")
 endif()
 
 #NETCDF
