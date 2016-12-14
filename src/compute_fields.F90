@@ -1,4 +1,4 @@
-subroutine compute_fields(myproc,nb_locations,locations,klev,pvah,pvbh,&
+subroutine compute_fields(nproc,myproc,nb_locations,locations,klev,pvah,pvbh,&
 & fvm,nodepoints, windfield,gpfields_from_sp,gridpoints, gpfields)
 
 ! * calculates horizontal gradients of z, T and q
@@ -20,6 +20,7 @@ use atlas_module
 use yomvar
 implicit none
 
+INTEGER(KIND=JPIM), intent(in) :: nproc
 INTEGER(KIND=JPIM), intent(in) :: myproc
 INTEGER(KIND=JPIM), intent(in) :: nb_locations
 TYPE(TLOCATION), target, intent(inout) :: locations(nb_locations)
@@ -63,7 +64,7 @@ TYPE(TPARAM), POINTER :: PX
 #include "calcgeost.h"
 !-------------------------------------------------------------------------
 
-mpi_comm = fckit_mpi_comm()
+IF( NPROC > 1 ) mpi_comm = fckit_mpi_comm()
 
 ! need minus as advective forcing on rhs
 zdir = -1.0_jprb
@@ -241,7 +242,7 @@ do jfld=1,isize
   enddo
 enddo
 
-call mpi_comm%barrier()
+if( NPROC > 1 ) call mpi_comm%barrier()
 
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then

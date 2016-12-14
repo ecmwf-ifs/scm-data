@@ -1,4 +1,4 @@
-SUBROUTINE READ_GRIB_SCM(LSINGLE, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
+SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
  & spectral, spfields, gridpoints, gpfields)
 
 ! fieldset spfields for spectral
@@ -10,7 +10,6 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 
 use, intrinsic :: iso_C_binding
 
-use fckit_mpi_module, only : fckit_mpi_comm
 use fckit_log_module, only : log
 use atlas_module, only : atlas_Field, atlas_FieldSet, atlas_functionspace_StructuredColumns, atlas_functionspace_Spectral, &
  & atlas_Metadata, atlas_real 
@@ -23,10 +22,11 @@ use yomvar
 IMPLICIT NONE
 
 ! testing dimensions
-INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
-!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
+!INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 1280_JPIM*640_JPIM
+INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
 
 LOGICAL, intent(in) :: LSINGLE
+INTEGER(KIND=JPIM),intent(in) :: NPROC
 INTEGER(KIND=JPIM),intent(in) :: MYPROC
 CHARACTER(len=30), intent(in) :: FILE
 
@@ -37,8 +37,6 @@ type(atlas_functionspace_Spectral), intent(in) :: spectral
 
 TYPE(TINFO), intent(inout) :: INFO
 LOGICAL, intent(in) :: lprognostic,larea
-
-type(fckit_mpi_comm) :: mpi_comm
 
 REAL(KIND=JPRB) :: ZINDEF
      
@@ -52,7 +50,7 @@ INTEGER(KIND=JPIM) :: j, iret, ifi, ifo, ilenf, iparam, ilev, idate, itime, iste
 character(len=10) :: fieldname, str
 type(atlas_Field) :: field, fieldg, fields, fields_input, fields_local
 type(atlas_Metadata) :: metadata
-INTEGER(KIND=JPIM) :: NPROC, JMAX
+INTEGER(KIND=JPIM) :: JMAX
 
 ! define parallel IO
 type(atlas_FieldSet) :: spset, gpset
@@ -75,10 +73,8 @@ REAL(KIND=c_double), POINTER :: locdata(:)
 IOMASTER=1_JPIM
 ! set to 1 if not to use IOMASTER FOR DECODING
 IO_SHIFT = 0
-mpi_comm = fckit_mpi_comm()
-NPROC = mpi_comm%size() 
 IF( NPROC > 1 ) IO_SHIFT = 1
-CALL MPL_INIT()
+IF( NPROC > 1 ) CALL MPL_INIT()
 ITAG = 123456
 IRET = 0
 str=''
