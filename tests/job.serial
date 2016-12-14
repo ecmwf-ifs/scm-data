@@ -1,11 +1,11 @@
 #!/bin/bash --login
 #PBS -S /bin/bash
-#PBS -q np
+#PBS -q df
 ####PBS dp, np, nf
 #PBS -N job
 #PBS -j oe
 #PBS -o ifs_run.out
-#PBS -l EC_total_tasks=4
+#PBS -l EC_total_tasks=1
 #PBS -l EC_threads_per_task=1
 #PBS -l EC_hyperthreads=2
 #PBS -l walltime=00:10:00
@@ -58,6 +58,6 @@ module load cray-snplauncher
 #module load forge
 #module load ddt
 export DISPLAY=cormac:0.0
-aprun -ss -cc cpu -j 2 -n 4 -N 4 -d 1 /fwsm/lb/user/naw/scm-data-install/bin/getini1c 1>log 2>&1
-#mpiexec -n 1 /fwsm/lb/user/naw/scm-data-install/bin/getini1c 1>log 2>&1
+#aprun -ss -cc cpu -j 2 -n 4 -N 4 -d 1 /fwsm/lb/user/naw/scm-data-install/bin/getini1c 1>log 2>&1
+mpiexec -n 1 /fwsm/lb/user/naw/scm-data-install/bin/getini1c 1>log 2>&1
 #ddt -n 4 -mpiargs '-N 4 -ss -cc cpu -d 1' /fwsm/lb/user/naw/scm-data-install/bin/getini1c
