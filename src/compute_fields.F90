@@ -270,7 +270,8 @@ do iloc=1, nb_locations
        &       (PX%PU(jlev)*PX%PSPL+PX%PV(jlev)*PX%PSPM)*(pvbh(jlev)-pvbh(jlev-1))
     enddo
     ! compute advection terms -------------------------------------------------------
-    
+    ! lower resol advection terms ?!    
+
     do jlev=1,klev
       PX%PUADV(jlev) = zdir * ( PX%PU(jlev) * zdudx(jlev) + PX%PV(jlev) * zdudy(jlev) )
       PX%PVADV(jlev) =  zdir * ( PX%PU(jlev) * zdvdx(jlev) + PX%PV(jlev) * zdvdy(jlev) )

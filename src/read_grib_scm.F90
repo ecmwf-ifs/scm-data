@@ -78,7 +78,7 @@ IO_SHIFT = 0
 mpi_comm = fckit_mpi_comm()
 NPROC = mpi_comm%size() 
 IF( NPROC > 1 ) IO_SHIFT = 1
-CALL MPL_INIT()
+IF( NPROC > 1 ) CALL MPL_INIT()
 ITAG = 123456
 IRET = 0
 str=''

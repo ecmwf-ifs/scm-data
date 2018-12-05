@@ -27,7 +27,7 @@ REAL(KIND=JPRB) :: zvc(klev), zdelb(klev)
 REAL(KIND=JPRB) :: ZTOPPRES
 
 REAL(KIND=JPRB) zpreh(0:klev), zdelp(klev), zrdelp, zcoefapl, zcoefa & 
- &   , zxybder_lnprl(klev), zxybder_lnprm(klev), zxybder_m_alphl(klev), zxybder_m_alphm(klev) &
+ &   , zxybder_lnprl(klev), zxybder_lnprm(klev), zxybder_m_alphll(klev), zxybder_m_alphlm(klev) &
  &   , zlnpr(klev)   , zalph(klev), zrtgr  &
  &   , zrpres  , zrpp &
  &   , zr(klev), zprehydspre(klev) &
@@ -74,14 +74,12 @@ do jlev=0,klev-1
   zpreh(jlev) = pah(jlev)+pbh(jlev)*zpreh(klev)
 enddo
 ! computes auxiliary arrays related to the vertical and full-level pressure
-! need only zlnpr, zalph, zxybder_lnprl, zxybder_lnprm, zxybder_m_alphl, zxybder_m_alphm
+! need only zlnpr, zalph, zxybder_lnprl, zxybder_lnprm, zxybder_m_alphll, zxybder_m_alphlm
 ZTOPPRES=0.1
 zalph(1) = LOG(2.)
 zlnpr(1) = LOG(zpreh(1)/ZTOPPRES)
 zxybder_lnprl(1)=0.
 zxybder_lnprm(1)=0.
- zxybder_m_alphl(1)=0.
-zxybder_m_alphm(1)=0.
 
 do jlev=2,klev
     zrpres = 1.0/zpreh(jlev)
@@ -94,11 +92,17 @@ do jlev=2,klev
     zxybder_lnprl(jlev) = -zvc(jlev)*zrpp*pspl
     zxybder_lnprm(jlev) = -zvc(jlev)*zrpp*pspm
 
-    zrtgr = zrdelp * (zdelb(jlev) + zvc(jlev)*zlnpr(jlev)*zrdelp)
-    ZCOEFAPL = pbh(jlev)*zrpres
-    ZCOEFA = ZCOEFAPL - zrtgr
-    zxybder_m_alphl(jlev) =  ZCOEFA * pspl
-    zxybder_m_alphm(jlev) =  ZCOEFA * pspm
+!    zrtgr = zrdelp * (zdelb(jlev) + zvc(jlev)*zlnpr(jlev)*zrdelp)
+!    ZCOEFAPL = pbh(jlev)*zrpres
+!    ZCOEFA = ZCOEFAPL - zrtgr
+
+enddo
+
+do jlev=1,klev
+  zrpres = 1.0/zpreh(jlev)
+  ZCOEFAPL = pbh(jlev)*zrpres
+  zxybder_m_alphll(jlev) =  ZCOEFAPL * pspl
+  zxybder_m_alphlm(jlev) =  ZCOEFAPL * pspm
 enddo
 
 ! emulate call gprcp(kproma,kstart,kend,klev,pq,zcp,zr,zkap)
@@ -128,10 +132,18 @@ do jlev=klev,1,-1
   zphihl(jlev-1) = zphihl(jlev) + zlnpr(jlev)*zprehydspre(jlev)*zrtl(jlev) + zxybder_lnprl(jlev)*zprehydspre(jlev)*zr(jlev)*pt(jlev)
   zphihm(jlev-1) = zphihm(jlev) + zlnpr(jlev)*zprehydspre(jlev)*zrtm(jlev) + zxybder_lnprm(jlev)*zprehydspre(jlev)*zr(jlev)*pt(jlev)
 enddo
-! 2.2 "alpha" and "grad alpha" terms contributions.
+
+! 2.2 compute [ grad(Phi) + RT grad(log(p)) == grad_p (phi) ] on full levels
+
+! start with half level grad(phi)
 do jlev=1,klev
-  zphifl(jlev) = zphihl(jlev) + zalph(jlev)*zprehydspre(jlev)*zrtl(jlev)+zxybder_m_alphl(jlev)*zprehydspre(jlev)*zr(jlev)*pt(jlev)
-  zphifm(jlev) = zphihm(jlev) + zalph(jlev)*zprehydspre(jlev)*zrtm(jlev)+zxybder_m_alphm(jlev)*zprehydspre(jlev)*zr(jlev)*pt(jlev)
+  zphifl(jlev) = zphihl(jlev)
+  zphifm(jlev) = zphihm(jlev)
+enddo
+
+do jlev=1,klev
+  zphifl(jlev) = zphifl(jlev) + zalph(jlev)*zrtl(jlev)+zxybder_m_alphll(jlev)*zr(jlev)*pt(jlev)
+  zphifm(jlev) = zphifm(jlev) + zalph(jlev)*zrtm(jlev)+zxybder_m_alphlm(jlev)*zr(jlev)*pt(jlev)
 enddo
 
 ! final calculation of geostrophic winds
