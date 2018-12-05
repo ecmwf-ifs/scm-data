@@ -1,5 +1,5 @@
 INTERFACE
-subroutine compute_fields(myproc,nb_locations,locations,klev,pvah,pvbh,&
+subroutine compute_fields(nproc,myproc,nb_locations,locations,klev,pvah,pvbh,&
 			  & fvm,nodepoints, windfield,gpfields_from_sp,gridpoints,gpfields)
 
 use, intrinsic :: iso_C_binding
@@ -10,6 +10,7 @@ use yomvar
 
 implicit none
 
+INTEGER(KIND=JPIM), intent(in) :: nproc
 INTEGER(KIND=JPIM), intent(in) :: myproc
 INTEGER(KIND=JPIM), intent(in) :: nb_locations
 TYPE(TLOCATION), target, intent(in) :: locations(nb_locations)

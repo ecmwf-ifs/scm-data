@@ -162,7 +162,7 @@ file=' '
 write(file,'(A)') 'sfc_grib '
 sfcfields = atlas_FieldSet("gridpoints")
 LSINGLE=.FALSE.
-call read_grib_scm(LSINGLE,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,sfcfields)
+call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,sfcfields)
 if (.not.larea) then
 !!!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(iloc)
   do iloc=1, nb_locations
@@ -178,7 +178,7 @@ endif
 file=' '
 write(file,'(A)') 'cld_grib '
 gpfields = atlas_FieldSet("gridpoints")
-call read_grib_scm(LSINGLE,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,gpfields)
+call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,gpfields)
 
 ! Setup spectral transforms
 trans = atlas_Trans(grid,nsmax)
@@ -189,7 +189,7 @@ write(msg,'(A,I0)') "trans%nsmax() = ",trans%nsmax(); call log%info(msg)
 file=' '
 write(file,'(A)') 'spec_grib '
 spfields = atlas_FieldSet("spectral")
-call read_grib_scm(LSINGLE,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
+call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
 
 write(msg,'(A)') " finished I/O"; call log%info(msg)
 
@@ -249,7 +249,7 @@ write(msg,'(A)') " inverse wind transform finished "; call log%info(msg)
 ! needs then modification to compute_fields to remove gradient calls ... 
 
 write(msg,'(A)') " compute fields "; call log%info(msg)
-call compute_fields(myproc,nb_locations,locations(1:nb_locations),nlev,&
+call compute_fields(nproc,myproc,nb_locations,locations(1:nb_locations),nlev,&
  &pvah,pvbh,fvm,nodepoints, windfield,gpfields_from_sp, gridpoints, gpfields)
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
