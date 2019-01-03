@@ -270,6 +270,12 @@ do iloc=1, nb_locations
       PX%petadotdpdeta(jlev)=PX%petadotdpdeta(jlev)- &
        &       (PX%PU(jlev)*PX%PSPL+PX%PV(jlev)*PX%PSPM)*(pvbh(jlev)-pvbh(jlev-1))
     enddo
+
+    ! fix by adding partial ps / partial t
+    do jlev=1,klev-1
+      PX%petadotdpdeta(jlev) = -pvbh(jlev) * PX%petadotdpdeta(klev) + PX%petadotdpdeta(jlev)
+    enddo
+
     ! compute advection terms -------------------------------------------------------
     ! lower resol advection terms ?!    
 
