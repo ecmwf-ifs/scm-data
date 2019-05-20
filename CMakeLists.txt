@@ -36,6 +36,14 @@ if( NOT HAVE_GRIB )
     ecbuild_error( "The scm executables require eccodes")
 endif()
 
+ecbuild_add_option( FEATURE TRANS
+                    DESCRIPTION "scm: Support for trans"
+                    REQUIRED_PACKAGES "PROJECT trans" )
+if( NOT HAVE_TRANS )
+    ecbuild_warn( "The scm executables requiring trans cannot be built")
+endif()
+
+
 #NETCDF
 ecbuild_add_option( FEATURE NETCDF
                     DEFAULT ON

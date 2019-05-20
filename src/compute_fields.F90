@@ -48,7 +48,7 @@ REAL(KIND=c_double),POINTER :: nodedata(:)
 REAL(KIND=c_double),POINTER :: values(:), zu(:,:), zv(:,:), &
  & grad_data(:,:), gradu_data(:,:,:), gradv_data(:,:,:) 
 
-REAL(KIND=c_double),POINTER :: grad_wind_data(:,:,:,:), wind(:,:,:)
+REAL(KIND=c_double),POINTER :: grad_wind_data(:,:,:), wind(:,:,:)
 
 !REAL(KIND=JPRB),allocatable :: zu(:,:), zv(:,:)
 
@@ -88,7 +88,7 @@ enddo
 nabla = atlas_Nabla(fvm)
 
 !! calculate wind + derivatives
-grad_wind = nodepoints%create_field("gradwind",atlas_real(JPRB),klev,[2,2])
+grad_wind = nodepoints%create_field(name="gradwind",kind=atlas_real(JPRB),levels=klev,variables=4) ! 4 vars = 2x2 matrix
 call nodepoints%halo_exchange(windfield)
 call nabla%gradient(windfield,grad_wind)
 !! grad_wind_data == 2(u,v), 2(dx,dy), nodes, levels, nodes
@@ -116,7 +116,7 @@ call windfield%data(wind)
 
 ! end wind
 
-grad = nodepoints%create_field("grad", atlas_real(JPRB),[2])
+grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),variables=2)
 ! scalar gp from sp
 isize = gpfields_from_sp%size()
 do jfld=1,isize
@@ -185,7 +185,7 @@ do jfld=1,isize
   ! derivatives
   if ( iparam == 133 .or. iparam ==  75 .or. iparam == 76 .or. iparam == 246 .or. iparam == 247 .or. iparam == 248 ) then
     write(fieldname, '(I0)') jfld+iparam
-    field_nodes = nodepoints%create_field(fieldname,atlas_real(JPRB))
+    field_nodes = nodepoints%create_field(name=fieldname,kind=atlas_real(JPRB))
     call field_nodes%data(nodedata)
     ! begin pack
     nodes = nodepoints%nodes()
@@ -252,10 +252,15 @@ do iloc=1, nb_locations
     PX%PU(:) = wind(1,:,inode)
     PX%PV(:) = wind(2,:,inode)
 
-    zdudx(:) = grad_wind_data( 1, 1,  :, inode )
-    zdudy(:) = grad_wind_data( 2, 1,  :, inode )
-    zdvdx(:)  = grad_wind_data( 1, 2,  :, inode )
-    zdvdy(:)  = grad_wind_data( 2, 2,  :, inode )
+#define INDEX_DUDX 1
+#define INDEX_DUDY 2
+#define INDEX_DVDX 3
+#define INDEX_DVDY 4
+
+    zdudx(:) = grad_wind_data( INDEX_DUDX,  :, inode )
+    zdudy(:) = grad_wind_data( INDEX_DUDY,  :, inode )
+    zdvdx(:) = grad_wind_data( INDEX_DVDX,  :, inode )
+    zdvdy(:) = grad_wind_data( INDEX_DVDY,  :, inode )
     
 !    zdudx(:) = gradu_data(1,:,inode)
 !    zdudy(:) = gradu_data(2,:,inode)

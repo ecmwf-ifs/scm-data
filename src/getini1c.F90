@@ -15,16 +15,16 @@ subroutine run( return_code )
 use, intrinsic :: iso_C_binding
 use fckit_mpi_module, only : fckit_mpi_comm
 use fckit_log_module, only : log
-use atlas_module, only: atlas_Config, atlas_grid_Structured, atlas_Mesh, atlas_mesh_Nodes, atlas_MeshGenerator, &
+use atlas_module, only: atlas_Config, atlas_StructuredGrid, atlas_Mesh, atlas_mesh_Nodes, atlas_MeshGenerator, &
  & atlas_Trans, atlas_functionspace_Spectral, atlas_fvm_Method, atlas_functionspace_NodeColumns, atlas_Field, atlas_FieldSet, &
- & atlas_Metadata, atlas_real, atlas_meshgenerator_Structured, atlas_functionspace_StructuredColumns
+ & atlas_Metadata, atlas_real, atlas_Meshgenerator, atlas_functionspace_StructuredColumns
 use yomvar
 
 implicit none
 
 INTEGER(KIND=JPIM) :: return_code
 type(atlas_Config) :: config
-type(atlas_grid_Structured) :: grid
+type(atlas_StructuredGrid) :: grid
 type(atlas_Mesh) :: mesh
 type(atlas_mesh_Nodes) :: nodes
 type(atlas_MeshGenerator) :: meshgenerator
@@ -121,8 +121,8 @@ call config%set("radius",6371229.0)
 ! cgrid = "N24"
 
 !grid = atlas_grid_ReducedGaussian(cgrid)
-grid = atlas_grid_Structured(cgrid)
-meshgenerator = atlas_meshgenerator_Structured(config)
+grid = atlas_StructuredGrid(cgrid)
+meshgenerator = atlas_Meshgenerator(config)
 mesh = meshgenerator%generate(grid) ! second optional argument for atlas_GridDistribution
 nodes = mesh%nodes()
 
@@ -146,8 +146,7 @@ do j=1, nb_locations
 enddo
 write(msg,'(A)') "finished nearest distances "; call log%info(msg)
 
-write(msg,'(A,I0)') "grid%N()      = ",grid%N();      call log%info(msg)
-write(msg,'(A,I0)') "grid%npts()   = ",grid%npts();   call log%info(msg)
+write(msg,'(A,I0)') "grid%size()   = ",grid%size();   call log%info(msg)
 
 ! this is the functionspace nodepoints
 fvm  = atlas_fvm_Method(mesh, config)
@@ -183,7 +182,7 @@ call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spf
 ! Setup spectral transforms
 trans = atlas_Trans(grid,nsmax)
 spectral   = atlas_functionspace_Spectral(trans)
-write(msg,'(A,I0)') "trans%nsmax() = ",trans%nsmax(); call log%info(msg)
+write(msg,'(A,I0)') "spectral%truncation() = ",spectral%truncation(); call log%info(msg)
 
 ! read upper air fieldset (spectral)
 file=' '
@@ -203,21 +202,20 @@ do jfld=1,isize
   call metadata%get("level", ilev)
 
   write(fieldname, '(I0)') jfld
-  field = nodepoints%create_field(fieldname,atlas_real(JPRB))
+  field = nodepoints%create_field(name=fieldname,kind=atlas_real(JPRB))
   metadata = field%metadata()
   call metadata%set("paramId",iparam)
   call metadata%set("level",ilev)
   call gpfields_from_sp%add( field )
 enddo
 write(msg,'(A)') " inverse transform starting "; call log%info(msg)
-!call trans%invtrans(spfields,gpfields_from_sp)
-call trans%invtrans(spectral,spfields,nodepoints,gpfields_from_sp)
+call trans%invtrans(spfields,gpfields_from_sp)
 write(msg,'(A)') " inverse transform finished "; call log%info(msg)
 
 ! copy vor/div into level structure before transform to u/v
-vorfield = spectral%create_field("vorticity",atlas_real(JPRB),nlev)
-divfield =  spectral%create_field("divergence",atlas_real(JPRB),nlev)
-windfield = nodepoints%create_field("wind",atlas_real(JPRB),nlev,[2])
+vorfield = spectral%create_field(name="vorticity",kind=atlas_real(JPRB),levels=nlev)
+divfield =  spectral%create_field(name="divergence",kind=atlas_real(JPRB),levels=nlev)
+windfield = nodepoints%create_field(name="wind",kind=atlas_real(JPRB),levels=nlev,variables=2)
 call vorfield%data(vor)
 call divfield%data(div)
 do jfld=1,isize
@@ -234,7 +232,7 @@ do jfld=1,isize
   endif
 enddo
 write(msg,'(A)') " inverse wind transform starting "; call log%info(msg)
-call trans%invtrans_vordiv2wind(spectral,vorfield,divfield,nodepoints,windfield)
+call trans%invtrans_vordiv2wind(vorfield,divfield,windfield)
 write(msg,'(A)') " inverse wind transform finished "; call log%info(msg)
 
 
@@ -295,15 +293,14 @@ end subroutine run
 ! MAIN PROGRAM
 program getini1c
 use atlas_module, only: &
-  & atlas_init         ,&
-  & atlas_finalize
+  & atlas_library
 USE MPL_MODULE, only : mpl_end
 implicit none
 integer :: return_code
-call atlas_init()
+call atlas_library%initialise()
 call run(return_code)
 call mpl_end()
-call atlas_finalize()
+call atlas_library%finalise()
 if( return_code /= 0 ) then 
   STOP 1
 endif

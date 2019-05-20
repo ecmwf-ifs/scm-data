@@ -21,6 +21,7 @@ ecbuild_add_executable( TARGET getini1c
                                 ${NETCDF_INCLUDE_DIRS}
                         LIBS 
                                 atlas_f
+                                trans
                                 eccodes_f90
                                 ${NETCDF_LIBRARIES}
                       )

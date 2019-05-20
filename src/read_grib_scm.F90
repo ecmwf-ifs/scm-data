@@ -263,13 +263,13 @@ gpset = atlas_FieldSet("gridpoints")
 if( .not.(spectral%is_null()) ) then
   DO IFLDS=1,NFIELDS
     write(fieldname,'(I0)') IFLDS
-    fields = spectral%create_field(fieldname,atlas_real(JPRB), global=.true.,owner= IOROOT(IFLDS)-1 )
+    fields = spectral%create_field(name=fieldname,kind=atlas_real(JPRB), global=.true.,owner= IOROOT(IFLDS)-1 )
     call spset%add( fields )
   ENDDO
 endif
 if( .not.(gridpoints%is_null()) ) then
   DO IFLDS=1,NFIELDS
-    fieldg = gridpoints%create_field(fieldname,atlas_real(JPRB), global=.true.,owner= IOROOT(IFLDS)-1 )
+    fieldg = gridpoints%create_field(name=fieldname,kind=atlas_real(JPRB), global=.true.,owner= IOROOT(IFLDS)-1 )
     call gpset%add( fieldg )
   ENDDO
 endif
@@ -385,7 +385,7 @@ if( .not.(gridpoints%is_null()) ) then
     write(fieldname,'(I0)') IFLDS
     
     IF( .NOT.LLSPECTRAL(IFLDS) ) THEN
-      field  = gridpoints%create_field(fieldname,atlas_real(JPRB))
+      field  = gridpoints%create_field(name=fieldname,kind=atlas_real(JPRB))
       fieldg = gpset%field(IFLDS)
       call gridpoints%scatter(fieldg, field)
       metadata = field%metadata()
@@ -417,8 +417,8 @@ if( .not.(spectral%is_null()) ) then
     IO=IOPROC(J)
     IMAXFLDS = IMAXF(J)
     write(fieldname,'(I0)') IMAXFLDS+J
-    fields_local  = spectral%create_field(fieldname,atlas_real(JPRB), IMAXFLDS)
-    fields = spectral%create_field(fieldname,atlas_real(JPRB), IMAXFLDS, global=.true.,owner= IO-1 )
+    fields_local  = spectral%create_field(name=fieldname,kind=atlas_real(JPRB), levels=IMAXFLDS)
+    fields = spectral%create_field(name=fieldname,kind=atlas_real(JPRB), levels=IMAXFLDS, global=.true.,owner= IO-1 )
     IF( MYPROC == IO ) THEN
       DO JFLD=1, IMAXFLDS
         IFLDS = IFIELD(JFLD,IO)
@@ -439,7 +439,7 @@ if( .not.(spectral%is_null()) ) then
       ILEV = ILLEV(IFLDS)
       write(fieldname,'(I0)') IFLDS
       IF( LLSPECTRAL(IFLDS) ) THEN
-        field  = spectral%create_field(fieldname,atlas_real(JPRB))
+        field  = spectral%create_field(name=fieldname,kind=atlas_real(JPRB))
         call fields_local%data(fieldsdata)
         call spfields%add( field )
         call field%data(locdata)
