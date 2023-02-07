@@ -10,39 +10,27 @@
 
 cmake_minimum_required( VERSION 3.3.2 FATAL_ERROR )
 
-project( scm-data C Fortran )
+find_package( ecbuild REQUIRED )
+project( scm-data LANGUAGES C Fortran )
 
-set( ENABLE_OS_TYPES_TEST       OFF   CACHE BOOL " " )
-set( ENABLE_OS_FUNCTIONS_TEST   OFF   CACHE BOOL " " )
-set( ENABLE_LARGE_FILE_SUPPORT  OFF   CACHE BOOL " " )
-set( ENABLE_OS_ENDINESS_TEST    OFF   CACHE BOOL " " )
-
-include( ecbuild_system NO_POLICY_SCOPE )
-ecbuild_requires_macro_version( 1.9 )
-ecbuild_declare_project()
 ecbuild_enable_fortran( REQUIRED MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/module )
+
+ecbuild_find_package( eccodes REQUIRED )
 
 ecbuild_add_option( FEATURE ATLAS
                     DESCRIPTION "scm: Support for atlas"
-                    REQUIRED_PACKAGES "PROJECT atlas" )
+                    REQUIRED_PACKAGES "atlas" )
 if( NOT HAVE_ATLAS )
     ecbuild_warn( "The scm executables requiring atlas cannot be built")
 endif()
 
-ecbuild_add_option( FEATURE GRIB
-                    DESCRIPTION "scm: Support for grib data format"
-                    REQUIRED_PACKAGES "PROJECT eccodes" )
-if( NOT HAVE_GRIB )
-    ecbuild_error( "The scm executables require eccodes")
-endif()
 
 ecbuild_add_option( FEATURE TRANS
                     DESCRIPTION "scm: Support for trans"
-                    REQUIRED_PACKAGES "PROJECT trans" )
+                    REQUIRED_PACKAGES "ectrans" )
 if( NOT HAVE_TRANS )
     ecbuild_warn( "The scm executables requiring trans cannot be built")
 endif()
-
 
 #NETCDF
 ecbuild_add_option( FEATURE NETCDF

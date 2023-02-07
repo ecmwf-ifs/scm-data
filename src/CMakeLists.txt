@@ -16,12 +16,10 @@ ecbuild_add_executable( TARGET getini1c
                                 wrt1c_nc.F90
                         INCLUDES
                                 interface/
-                                ${ATLAS_INCLUDE_DIRS}
-                                ${ECCODES_INCLUDE_DIRS}
-                                ${NETCDF_INCLUDE_DIRS}
                         LIBS 
                                 atlas_f
-                                trans
+                                trans_dp
+                                fiat
                                 eccodes_f90
-                                ${NETCDF_LIBRARIES}
+                                NetCDF::NetCDF_Fortran
                       )
