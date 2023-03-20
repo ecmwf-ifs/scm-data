@@ -17,7 +17,7 @@ use fckit_mpi_module, only : fckit_mpi_comm
 use fckit_log_module, only : log
 use atlas_module, only: atlas_Config, atlas_StructuredGrid, atlas_Mesh, atlas_mesh_Nodes, atlas_MeshGenerator, &
  & atlas_Trans, atlas_functionspace_Spectral, atlas_fvm_Method, atlas_functionspace_NodeColumns, atlas_Field, atlas_FieldSet, &
- & atlas_Metadata, atlas_real, atlas_Meshgenerator, atlas_functionspace_StructuredColumns
+ & atlas_Metadata, atlas_real, atlas_Meshgenerator, atlas_functionspace_StructuredColumns, atlas_Partitioner
 use yomvar
 
 implicit none
@@ -28,6 +28,7 @@ type(atlas_StructuredGrid) :: grid
 type(atlas_Mesh) :: mesh
 type(atlas_mesh_Nodes) :: nodes
 type(atlas_MeshGenerator) :: meshgenerator
+type(atlas_Partitioner) :: partitioner
 type(atlas_Trans)                           :: trans
 type(atlas_functionspace_Spectral)          :: spectral
 type(atlas_fvm_Method) :: fvm
@@ -123,7 +124,8 @@ call config%set("radius",6371229.0)
 !grid = atlas_grid_ReducedGaussian(cgrid)
 grid = atlas_StructuredGrid(cgrid)
 meshgenerator = atlas_Meshgenerator(config)
-mesh = meshgenerator%generate(grid) ! second optional argument for atlas_GridDistribution
+partitioner = atlas_Partitioner("ectrans")
+mesh = meshgenerator%generate(grid,partitioner)
 nodes = mesh%nodes()
 
 ! find the processor and node location on the processor responsible for each user specified lat/lon location
