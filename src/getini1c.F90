@@ -126,6 +126,7 @@ grid = atlas_StructuredGrid(cgrid)
 meshgenerator = atlas_Meshgenerator(config)
 partitioner = atlas_Partitioner("ectrans")
 mesh = meshgenerator%generate(grid,partitioner)
+call partitioner%final()
 nodes = mesh%nodes()
 
 ! find the processor and node location on the processor responsible for each user specified lat/lon location
@@ -286,8 +287,10 @@ call mesh%final()
 call grid%final()
 call meshgenerator%final()
 
- write(msg,'(A)')  "getini1c: end"
+write(msg,'(A)')  "getini1c: end"
 call log%info(msg)
+
+return_code = 0
 
 end subroutine run
 
