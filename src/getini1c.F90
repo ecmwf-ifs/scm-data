@@ -184,7 +184,7 @@ call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spf
 
 ! Setup spectral transforms
 trans = atlas_Trans(grid,nsmax)
-spectral   = atlas_functionspace_Spectral(trans)
+spectral   = atlas_functionspace_Spectral(trans%truncation())
 write(msg,'(A,I0)') "spectral%truncation() = ",spectral%truncation(); call log%info(msg)
 
 ! read upper air fieldset (spectral)
