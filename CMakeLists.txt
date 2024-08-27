@@ -17,6 +17,13 @@ ecbuild_enable_fortran( REQUIRED MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/module )
 
 ecbuild_find_package( eccodes REQUIRED )
 
+
+# Build command line tools
+ecbuild_add_option( FEATURE BUILD_TOOLS
+                    DESCRIPTION "Build the command line tools"
+                    DEFAULT ON )
+
+
 ecbuild_add_option( FEATURE ATLAS
                     DESCRIPTION "scm: Support for atlas"
                     REQUIRED_PACKAGES "atlas" )
@@ -41,10 +48,27 @@ if( ENABLE_NETCDF AND NOT HAVE_NETCDF )
   message( STATUS "Did you forget to 'module load netcdf'?")
 endif()
 
+
+ecbuild_add_option( FEATURE SINGLE_PRECISION
+                    DESCRIPTION "plume plugin in single precision"
+                    DEFAULT OFF )
+
+
+ecbuild_add_option( FEATURE PLUME_PLUGIN
+                    DESCRIPTION "plume plugin"
+                    DEFAULT OFF
+                    CONDITION ENABLE_ATLAS
+                    REQUIRED_PACKAGES plume fiat )
+
+
 ############################################################################################
 # build executables
 
 add_subdirectory( src )
+
+if(HAVE_TESTS)
+  add_subdirectory( tests )
+endif()
 
 ############################################################################################
 # finalize

@@ -1,0 +1,58 @@
+module user_plugin_module__@PLUGIN_NAME@
+
+    use fckit_log_module, only : log => fckit_log
+    use fckit_configuration_module, only : fckit_configuration
+    use plume_data_module, only : plume_data
+    use plume_module, only : plume_check
+
+    use plugin_impl_mod, only : scm_setup
+    use plugin_impl_mod, only : scm_run
+    use plugin_impl_mod, only : scm_teardown
+    
+    implicit none
+    private
+    
+    ! User-defined plugin methods
+    public :: plugincore_setup__@PLUGIN_NAME@
+    public :: plugincore_run__@PLUGIN_NAME@
+    public :: plugincore_teardown__@PLUGIN_NAME@
+    
+
+
+    contains
+    
+
+    
+    subroutine plugincore_setup__@PLUGIN_NAME@(config, model_data)
+        type(fckit_configuration) :: config
+        type(plume_data) :: model_data
+
+        call log%info("SCM-PLUGIN setup..")
+        call scm_setup(config, model_data)
+    end subroutine
+    
+
+    
+    subroutine plugincore_run__@PLUGIN_NAME@(config, model_data)
+        type(fckit_configuration) :: config
+        type(plume_data) :: model_data
+        logical :: found
+        real :: val
+        character(len=10) :: val_str
+
+        call log%info("SCM-PLUGIN running..")
+        call scm_run(config, model_data)        
+    end subroutine
+    
+    
+
+    subroutine plugincore_teardown__@PLUGIN_NAME@(config, model_data)
+        type(fckit_configuration) :: config
+        type(plume_data) :: model_data
+
+        call log%info("SCM-PLUGIN tearing down..")
+        call scm_teardown(config, model_data)
+    end subroutine
+    
+    
+    end module

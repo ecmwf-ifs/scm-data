@@ -1,8 +1,0 @@
-for name in scm* ; do
-
-station=`echo $name | cut -c 13-14`
-echo "station: $station"
-ncdump $name | grep 'lat ='
-ncdump $name | grep 'lon ='
-
-done

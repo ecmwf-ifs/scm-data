@@ -1,5 +1,5 @@
 INTERFACE
-SUBROUTINE SU_WRT_NC (myproc,PVAH,PVBH,dataid,inum,incid,klev)
+SUBROUTINE SU_WRT_NC (myproc,PVAH,PVBH,dataid,inum,incid,klev,nstep)
 
 use atlas_module
 use yomvar
@@ -11,6 +11,7 @@ character(len=*), intent(in) :: dataid
 INTEGER(KIND=JPIM),        intent(out):: incid
 INTEGER(KIND=JPIM),        intent(in) :: inum
 INTEGER(KIND=JPIM),        intent(in) :: klev
+INTEGER(KIND=JPIM),        intent(in) :: nstep
 
 end subroutine SU_WRT_NC
 END INTERFACE

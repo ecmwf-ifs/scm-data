@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -eux
+
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+bindir=@CMAKE_CURRENT_BINARY_DIR@
+datadir=@CMAKE_BINARY_DIR@/tests/data
+exedir=@CMAKE_BINARY_DIR@/bin
+
+
+TMPDIR_TESTS=@CMAKE_BINARY_DIR@/tests/tmpdir
+if [[ ! -e $TMPDIR_TESTS ]]; then
+    mkdir $TMPDIR_TESTS
+else
+    echo "Directory $TMPDIR_TESTS already exists.."
+fi
+
+cd $TMPDIR_TESTS
+
+if [[ ! -e cld_grib ]]; then
+    ln -s $datadir/cld_grib_t159 cld_grib
+else
+    echo "Link cld_grib already exists, not creating.."
+fi
+
+if [[ ! -e sfc_grib ]]; then
+    ln -s $datadir/sfc_grib_t159 sfc_grib
+else
+    echo "Link sfc_grib already exists, not creating.."
+fi
+
+if [[ ! -e spec_grib ]]; then
+    ln -s $datadir/spec_grib_t159 spec_grib
+else
+    echo "Link spec_grib already exists, not creating.."
+fi
+
+if [[ ! -e namelist_1c ]]; then
+    ln -s $datadir/namelist_1c_t159 namelist_1c
+else
+    echo "Link namelist_1c already exists, not creating.."
+fi
+
+
+$exedir/getini1c
+
+
+# to add checks..

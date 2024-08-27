@@ -1,0 +1,22 @@
+{
+    "plugins": [
+        {   
+            "name": "PluginSCMData",
+            "lib": "plugin_scm_data_SP",
+            "core-config": {
+                "LAREA": 0,
+                "LPROGNOSTIC": 1,
+                "DATAID": "data_ifs_test_tco1279",
+                "CGRID" : "O640",
+                "NSMAX" : 1279,
+                "NLEV"  : 137, 
+                "DELTA" : 0.1,
+                "points": [
+                    { "ID": 0, "lat": 33.33, "lon": 7.77 },
+                    { "ID": 1, "lat": 44.44, "lon": 8.88 },
+                    { "ID": 2, "lat": 66.66, "lon": 9.99 }
+                ]   
+            }   
+        }   
+    ]
+}

@@ -1,4 +1,4 @@
-SUBROUTINE SU_WRT_NC (myproc,PVAH,PVBH,dataid,inum,incid,klev)
+SUBROUTINE SU_WRT_NC (myproc,PVAH,PVBH,dataid,inum,incid,klev,nstep)
 
 use yomvar
 
@@ -15,12 +15,13 @@ implicit none
 
 #include "netcdf.inc"
 
-INTEGER(KIND=JPIM),        intent(in) :: myproc
-REAL(KIND=JPRB),           intent(in) :: PVAH(0:KLEV), PVBH(0:KLEV)
-character(len=*), intent(in) :: dataid
-INTEGER(KIND=JPIM),        intent(out):: incid
-INTEGER(KIND=JPIM),        intent(in) :: inum
-INTEGER(KIND=JPIM),        intent(in) :: klev
+INTEGER(KIND=JPIM), intent(in) :: myproc
+REAL(KIND=JPRB),    intent(in) :: PVAH(0:KLEV), PVBH(0:KLEV)
+character(len=*),   intent(in) :: dataid
+INTEGER(KIND=JPIM), intent(out):: incid
+INTEGER(KIND=JPIM), intent(in) :: inum
+INTEGER(KIND=JPIM), intent(in) :: klev
+INTEGER(KIND=JPIM), intent(in) :: nstep
 
 REAL*4    :: zv(0:klev)            ! for netcdf single precision
 !REAL(KIND=JPRB)            :: zv(0:klev)
@@ -30,7 +31,7 @@ INTEGER(KIND=JPIM) i, &
  & ilev(klev), ilevp1(klev+1), ilevs(ncss), istatus, iaccur
 logical   :: file_exist
 character (len=50) :: title
-character (len=17) :: nc_name
+character (len=24) :: nc_name
 
 INTEGER(KIND=JPIM), PARAMETER :: JPKD=KIND(zv)
 
@@ -45,8 +46,12 @@ iaccur=NF_DOUBLE
 
 !        2.    open NetCDF file.
 !              -----------------
+write(*,*) "NSTEP: ", NSTEP
 
-write(nc_name,"(A,I4.4,A,I2.2,A)") 'scm_in_',myproc,'_',inum,'.nc'
+write(nc_name,"(A,I4.4,A,I2.2,A,I6.6,A)") 'scm_in_',myproc,'_',inum,'_',NSTEP,'.nc'
+
+write(*,*) "nc_name: ", nc_name
+
 inquire ( file=nc_name, exist=file_exist )
   !inquire ( file='scm_in.nc', exist=file_exist )
 
