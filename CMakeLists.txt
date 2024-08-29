@@ -61,6 +61,11 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     REQUIRED_PACKAGES plume fiat )
 
 
+if( HAVE_SCM_SINGLE_PRECISION ) 
+  list(APPEND PLUGINS_DEFINITIONS WITH_SCM_SINGLE_PRECISION )
+endif()
+
+
 ############################################################################################
 # build executables
 
