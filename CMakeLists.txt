@@ -49,12 +49,12 @@ if( ENABLE_NETCDF AND NOT HAVE_NETCDF )
 endif()
 
 
-ecbuild_add_option( FEATURE SINGLE_PRECISION
+ecbuild_add_option( FEATURE SCM_SINGLE_PRECISION
                     DESCRIPTION "plume plugin in single precision"
                     DEFAULT OFF )
 
 
-ecbuild_add_option( FEATURE PLUME_PLUGIN
+ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     DESCRIPTION "plume plugin"
                     DEFAULT OFF
                     CONDITION ENABLE_ATLAS

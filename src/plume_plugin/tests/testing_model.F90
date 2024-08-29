@@ -336,7 +336,7 @@ subroutine run( return_code )
   ! *** this writes the netcdf files as in the original workflow
   call lonlatField%data(lonlat)
   call ghostField%data(ghost)
-  call fill_And_write(INFO, &
+  call fill_and_write(INFO, &
                       LOCATIONS, &
                       nb_locations, &
                       zlat, &

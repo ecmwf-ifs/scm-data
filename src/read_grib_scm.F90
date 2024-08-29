@@ -11,12 +11,33 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 use, intrinsic :: iso_C_binding
 
 use fckit_log_module, only : log
-use atlas_module, only : atlas_Field, atlas_FieldSet, atlas_functionspace_StructuredColumns, atlas_functionspace_Spectral, &
- & atlas_Metadata, atlas_real 
-USE GRIB_API, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_GET_SIZE, GRIB_RELEASE, & 
- & GRIB_OPEN_FILE, GRIB_COUNT_IN_FILE, GRIB_CLOSE_FILE, GRIB_SUCCESS
-USE MPL_MODULE, only : mpl_init, mpl_broadcast, mpl_send, &
-& mpl_recv, mpl_barrier, mpl_wait, jp_non_blocking_standard, jp_blocking_standard
+
+use atlas_module, only : atlas_Field
+use atlas_module, only : atlas_FieldSet
+use atlas_module, only : atlas_functionspace_StructuredColumns
+use atlas_module, only : atlas_functionspace_Spectral
+use atlas_module, only : atlas_Metadata
+use atlas_module, only : atlas_real
+
+USE GRIB_API, only : GRIB_READ_FROM_FILE
+USE GRIB_API, only : GRIB_NEW_FROM_MESSAGE
+USE GRIB_API, only : GRIB_GET
+USE GRIB_API, only : GRIB_GET_SIZE
+USE GRIB_API, only : GRIB_RELEASE
+USE GRIB_API, only : GRIB_OPEN_FILE
+USE GRIB_API, only : GRIB_COUNT_IN_FILE
+USE GRIB_API, only : GRIB_CLOSE_FILE
+USE GRIB_API, only : GRIB_SUCCESS
+
+USE MPL_MODULE, only : mpl_init
+USE MPL_MODULE, only : mpl_broadcast
+USE MPL_MODULE, only : mpl_send
+USE MPL_MODULE, only : mpl_recv
+USE MPL_MODULE, only : mpl_barrier
+USE MPL_MODULE, only : mpl_wait
+USE MPL_MODULE, only : jp_non_blocking_standard
+USE MPL_MODULE, only : jp_blocking_standard
+
 use yomvar
 
 IMPLICIT NONE
@@ -64,9 +85,15 @@ LOGICAL :: LLFIRST
 
 LOGICAL, ALLOCATABLE :: LLTYPE(:,:), LLSPECTRAL(:)
 
+#ifdef WITH_SCM_SINGLE_PRECISION
+REAL(KIND=c_float), POINTER :: fieldgdata(:)
+REAL(KIND=c_float), POINTER :: fieldsdata(:,:), zdata(:), gribsdata(:)
+REAL(KIND=c_float), POINTER :: locdata(:)
+#else
 REAL(KIND=c_double), POINTER :: fieldgdata(:)
 REAL(KIND=c_double), POINTER :: fieldsdata(:,:), zdata(:), gribsdata(:)
 REAL(KIND=c_double), POINTER :: locdata(:)
+#endif
 
 #include "dist_grid.h"
 
@@ -309,7 +336,7 @@ DECODE: DO JFLD=1,IMAXREC
   CALL GRIB_GET(IGRIB_IN,'paramId',iparam) ! grib code
   CALL GRIB_GET(IGRIB_IN,'level',ilev) ! 0/1/2/7/128 ... 
   CALL GRIB_GET_SIZE(IGRIB_IN,'values',ISIZE)
-  write(*,*) 'processor= ',MYPROC, 'number ', IFLDS, ' owning field= ',iparam
+  ! write(*,*) 'processor= ',MYPROC, 'number ', IFLDS, ' owning field= ',iparam
   
   IF ( TRIM(CGRIDTYPE) == 'sh' ) THEN
     if( .not.(spectral%is_null()) ) then

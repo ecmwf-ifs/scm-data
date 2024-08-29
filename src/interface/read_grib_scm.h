@@ -3,13 +3,35 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 		     & spectral, spfields, gridpoints, gpfields)
 
 use, intrinsic :: iso_C_binding
+
 use fckit_log_module, only : log
-use atlas_module, only : atlas_Field, atlas_FieldSet, atlas_functionspace_StructuredColumns, atlas_functionspace_Spectral, &
- & atlas_Metadata, atlas_real
-USE grib_api, only : GRIB_READ_FROM_FILE, GRIB_NEW_FROM_MESSAGE, GRIB_GET, GRIB_GET_SIZE, GRIB_RELEASE, & 
-  & GRIB_OPEN_FILE, GRIB_COUNT_IN_FILE, GRIB_CLOSE_FILE, GRIB_SUCCESS
-USE MPL_MODULE, only : mpl_init, mpl_broadcast, mpl_send, mpl_recv, &
-  & mpl_barrier, mpl_wait,jp_non_blocking_standard, jp_blocking_standard
+
+use atlas_module, only : atlas_Field
+use atlas_module, only : atlas_FieldSet
+use atlas_module, only : atlas_functionspace_StructuredColumns
+use atlas_module, only : atlas_functionspace_Spectral
+use atlas_module, only : atlas_Metadata
+use atlas_module, only : atlas_real
+
+USE GRIB_API, only : GRIB_READ_FROM_FILE
+USE GRIB_API, only : GRIB_NEW_FROM_MESSAGE
+USE GRIB_API, only : GRIB_GET
+USE GRIB_API, only : GRIB_GET_SIZE
+USE GRIB_API, only : GRIB_RELEASE
+USE GRIB_API, only : GRIB_OPEN_FILE
+USE GRIB_API, only : GRIB_COUNT_IN_FILE
+USE GRIB_API, only : GRIB_CLOSE_FILE
+USE GRIB_API, only : GRIB_SUCCESS
+
+USE MPL_MODULE, only : mpl_init
+USE MPL_MODULE, only : mpl_broadcast
+USE MPL_MODULE, only : mpl_send
+USE MPL_MODULE, only : mpl_recv
+USE MPL_MODULE, only : mpl_barrier
+USE MPL_MODULE, only : mpl_wait
+USE MPL_MODULE, only : jp_non_blocking_standard
+USE MPL_MODULE, only : jp_blocking_standard
+
 use yomvar
 
 implicit none

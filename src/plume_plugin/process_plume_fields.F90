@@ -79,7 +79,7 @@ INTEGER(KIND=JPIM) :: jnode
 
 ! ! *** TODO *** hardcoded field type! this needs to made generic
 
-#ifdef WITH_PLUME_PLUGINS_SINGLE_PRECISION  
+#ifdef WITH_SCM_SINGLE_PRECISION  
 REAL(KIND=c_float), POINTER :: nodedata(:,:)
 REAL(KIND=c_float), POINTER :: values(:)
 REAL(KIND=c_float), POINTER :: values_plume_fields(:,:)
@@ -138,9 +138,19 @@ grad_wind = nodepoints%create_field(name="gradwind",kind=atlas_real(JPRB),levels
 call nodepoints%halo_exchange(windfield)
 
 nabla = atlas_Nabla(fvm)
+
+write(*,*) "--- windfield%shape(): ", windfield%shape()
+write(*,*) "--- windfield%levels(): ", windfield%levels()
+
+write(*,*) "--- grad_wind%shape(): ", grad_wind%shape()
+write(*,*) "--- grad_wind%levels(): ", grad_wind%levels()
+
+
 call nabla%gradient(windfield,grad_wind)
 call grad_wind%data(grad_wind_data)
 call windfield%data(wind)
+
+write(*,*) "--- nabla done "
 
 
 grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
@@ -162,23 +172,27 @@ do jfld=1,isize
 
   ! derivatives
   if ( iparam == 129 .or. iparam == 130 ) then
-    ! write(*,*) "calculating NABLA for param ", iparam
+    write(*,*) "calculating NABLA for param ", iparam
     call nodepoints%halo_exchange(field)
     call nabla%gradient(field,grad)
     call grad%data(grad_data)
-    ! write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
-    ! write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
-    ! write(*,*) "--- size(grad_data,3): ", size(grad_data,3)
+    write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
+    write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
+    write(*,*) "--- size(grad_data,3): ", size(grad_data,3)
   endif
 
   if ( iparam == 152) then
-    ! write(*,*) "calculating NABLA for param ", iparam
+    write(*,*) "calculating NABLA for param ", iparam
+
+    write(*,*) "--- field%shape(): ", field%shape(), "--- grad_lnsp%shape(): ", grad_lnsp%shape()
+    write(*,*) "--- field%levels(): ", field%levels(), "--- grad_lnsp%levels(): ", grad_lnsp%levels()
+
     call nodepoints%halo_exchange(field)
     call nabla%gradient(field,grad_lnsp)
     call grad%data(grad_data)
-    ! write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
-    ! write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
-    ! write(*,*) "--- size(grad_data,3): ", size(grad_data,3)
+    write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
+    write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
+    write(*,*) "--- size(grad_data,3): ", size(grad_data,3)
   endif
   
   ! fill values

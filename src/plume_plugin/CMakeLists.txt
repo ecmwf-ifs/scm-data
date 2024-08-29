@@ -86,7 +86,7 @@ plume_plugin_interface(
 
 
 # Append the correct extension (SP or DP)
-if (HAVE_SINGLE_PRECISION)
+if (HAVE_SCM_SINGLE_PRECISION)
     set(PLUGIN_NAME_EXT "SP")
 else()
     set(PLUGIN_NAME_EXT "DP")
@@ -137,6 +137,6 @@ ecbuild_add_library(
 )
 
 
-# if (HAVE_SCM_PLUGIN_TEST)
-#     add_subdirectory(tests)
-# endif()
+if (HAVE_TESTS)
+    add_subdirectory(tests)
+endif()

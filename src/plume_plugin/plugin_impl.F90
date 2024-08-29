@@ -155,7 +155,7 @@ subroutine scm_setup(plugin_config, model_data)
   type(atlas_Field) :: lonlatField
   type(atlas_Field) :: ghostField
 
-#ifdef WITH_PLUME_PLUGINS_SINGLE_PRECISION  
+#ifdef WITH_SCM_SINGLE_PRECISION  
   REAL(KIND=c_float), POINTER :: dummy_data(:,:)
 #else
   REAL(KIND=c_double), POINTER :: dummy_data(:,:)
@@ -425,7 +425,7 @@ INTEGER(KIND=JPIM) :: nlocmax
 CHARACTER*127 msg
 integer :: ifield
 
-#ifdef WITH_PLUME_PLUGINS_SINGLE_PRECISION  
+#ifdef WITH_SCM_SINGLE_PRECISION  
   REAL(KIND=c_float), POINTER :: dummy_data(:,:)
 #else
   REAL(KIND=c_double), POINTER :: dummy_data(:,:)
@@ -454,6 +454,8 @@ if (.not.larea) then
   !$OMP END PARALLEL DO
 endif
 
+write(*,*) "fillvar done.." 
+
 ! write(*,*) "field_u%halo() = ", field_u%halo()
 gpfields_from_sp = atlas_FieldSet("nodepoints")
 do ifield=1,fields_spc_set%size()
@@ -474,7 +476,7 @@ do ifield=1,fields_cld_set%size()
   call gpfields_cld_nodes%add(field_tmp)
 enddo
 
-
+write(*,*) "calling process_plume_fields.."
 call process_plume_fields(nproc, &
                           myproc, &
                           nb_locations, &

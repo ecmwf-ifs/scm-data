@@ -16,7 +16,7 @@ function create_nodefield_from_field(field, nodepoints) result(field_nodes)
     type(atlas_Field) :: field_nodes
     type(atlas_Field) :: ghostField
 
-#ifdef WITH_PLUME_PLUGINS_SINGLE_PRECISION
+#ifdef WITH_SCM_SINGLE_PRECISION
     REAL(KIND=c_float), POINTER :: values(:,:)
     REAL(KIND=c_float), POINTER :: nodedata(:,:)
 #else
@@ -53,7 +53,7 @@ function create_nodefield_from_fields(name, fields, nodepoints) result(field_nod
     type(atlas_Field) :: field_nodes
     type(atlas_Field) :: ghostField
 
-#ifdef WITH_PLUME_PLUGINS_SINGLE_PRECISION
+#ifdef WITH_SCM_SINGLE_PRECISION
     REAL(KIND=c_float), POINTER :: values(:,:)
     REAL(KIND=c_float), POINTER :: nodedata(:,:)
 #else

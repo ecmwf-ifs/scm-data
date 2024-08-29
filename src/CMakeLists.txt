@@ -25,19 +25,20 @@ if( HAVE_BUILD_TOOLS )
                                         eccodes_f90
                                         NetCDF::NetCDF_Fortran
                               )
+
+        # Copy test data to build directory (if tests are enabled)
+        if (HAVE_TESTS)
+                add_custom_command(TARGET getini1c POST_BUILD
+                                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                                ${CMAKE_CURRENT_SOURCE_DIR}/../tests/data
+                                ${CMAKE_BINARY_DIR}/tests/data
+                                )
+        endif()
+        
 endif()
 
 
 # plume plugin
-if (HAVE_PLUME_PLUGIN)
+if (HAVE_SCM_PLUME_PLUGIN)
         add_subdirectory( plume_plugin )
-endif()
-
-# Copy test data to build directory (if tests are enabled)
-if (HAVE_TESTS)
-        add_custom_command(TARGET getini1c POST_BUILD
-                           COMMAND ${CMAKE_COMMAND} -E copy_directory
-                           ${CMAKE_CURRENT_SOURCE_DIR}/../tests/data
-                           ${CMAKE_BINARY_DIR}/tests/data
-                           )
 endif()
