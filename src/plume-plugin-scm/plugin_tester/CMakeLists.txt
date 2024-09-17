@@ -1,14 +1,14 @@
 
 # Surrogate model serving SCM GRIB fields
 ecbuild_add_executable(
-    TARGET testing_model
+    TARGET scp_plugin_tester
 
     SOURCES
     
         # test-specific sources
         fill_and_write.F90
         grib_fields_provider.F90
-        testing_model.F90
+        scp_plugin_tester.F90
 
         # plugin sources
         ../plugin_utils.F90        

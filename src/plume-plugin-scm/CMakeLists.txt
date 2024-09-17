@@ -138,5 +138,5 @@ ecbuild_add_library(
 
 
 if (HAVE_TESTS)
-    add_subdirectory(tests)
+    add_subdirectory(plugin_tester)
 endif()
