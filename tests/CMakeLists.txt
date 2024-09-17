@@ -1,10 +1,16 @@
 
-ecbuild_configure_file(
-    test_getini1c.sh.in
-    test_getini1c.sh @ONLY
-)
+# tests for getini tool
 
-ecbuild_add_test(
-    TYPE     SCRIPT
-    COMMAND  test_getini1c.sh
-)
+if ( HAVE_BUILD_TOOLS )
+    
+    ecbuild_configure_file(
+        test_getini1c.sh.in
+        test_getini1c.sh @ONLY
+    )
+
+    ecbuild_add_test(
+        TYPE     SCRIPT
+        COMMAND  test_getini1c.sh
+    )
+
+endif()
