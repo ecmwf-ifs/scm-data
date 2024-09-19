@@ -104,7 +104,7 @@ end subroutine compare_var_names
 
 
 
-subroutine compare(ncid1, ncid2)
+subroutine compare(ncid1, ncid2, eps)
 
     integer, intent(in) :: ncid1, ncid2
 
@@ -125,7 +125,7 @@ subroutine compare(ncid1, ncid2)
     character*256 :: varname1, varname2, dimname1, dimname2, attname1, attname2
     character*1024 :: msg
 
-    real(8) :: eps = 1.0e-8
+    real(8) :: eps
 
 
     ! Inquire about variables in the first file
@@ -285,21 +285,34 @@ integer :: ncid1, ncid2
 character*1024 :: msg
 integer :: status
 
+character(len=256) :: eps_arg
+real(8) :: eps
+integer :: ierr
+
 
 ! Get Command line arguments
 arg_count = command_argument_count()
-if ((arg_count<2).or.(arg_count>2)) then
-    write(msg,'(A)') "Error: This tool must be invoked as: scm_compare <file1.nc> <file2.nc>"; call log%error(msg)
+if (arg_count .ne. 3) then
+    write(msg,'(A)') "Error: This tool must be invoked as: scm_compare <file1.nc> <file2.nc> <eps>"; call log%error(msg)
     call exit(1)
 endif
 
 CALL get_command_argument(1, filename1)
 CALL get_command_argument(2, filename2)
+CALL get_command_argument(3, eps_arg)
+
+! Convert eps_arg into a real number
+read(eps_arg, '(F)', iostat=ierr) eps
+if (ierr /= 0) then
+    write(msg,'(A,A)') "Error: Invalid epsilon provided. Please enter a valid real number - ", eps_arg; call log%error(msg)
+    call exit(1)
+end if
 
 write(*,*) '---'
 write(*,'(A)') "Comparing files: "
 write(*,'(A,A)') "  ", trim(filename1)
 write(*,'(A,A)') "  ", trim(filename2)
+write(*,'(A,F)') ", with eps=", eps
 write(*,*) '---'
 
 
@@ -320,7 +333,7 @@ call compare_attributes(ncid1, ncid2)
 call compare_var_names(ncid1, ncid2)
 
 ! compare variable values
-call compare(ncid1, ncid2)
+call compare(ncid1, ncid2, eps)
 
 
 ! Close the NetCDF files
