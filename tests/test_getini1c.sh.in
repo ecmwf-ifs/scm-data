@@ -8,14 +8,14 @@ datadir=@CMAKE_BINARY_DIR@/tests/data
 exedir=@CMAKE_BINARY_DIR@/bin
 
 
-TMPDIR_TESTS=@CMAKE_BINARY_DIR@/tests/tmpdir
-if [[ ! -e $TMPDIR_TESTS ]]; then
-    mkdir $TMPDIR_TESTS
+tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir
+if [[ ! -e $tmpdir_tests ]]; then
+    mkdir $tmpdir_tests
 else
-    echo "Directory $TMPDIR_TESTS already exists.."
+    echo "Directory $tmpdir_tests already exists.."
 fi
 
-cd $TMPDIR_TESTS
+cd $tmpdir_tests
 
 if [[ ! -e cld_grib ]]; then
     ln -s $datadir/cld_grib_t159 cld_grib
@@ -41,14 +41,17 @@ else
     echo "Link namelist_1c already exists, not creating.."
 fi
 
+# Run the scm-data
+$exedir/getini1c
 
-# Compare NetCDF files against reference
+
+# Compare NetCDF files against reference files
 for out_file_id in $(seq 1 1 12); do
 
     out_file_id_2d=$(printf "%02d" $out_file_id)
 
     ref_file=${datadir}/reference/scm_in_0001_${out_file_id_2d}.nc
-    out_file=scm_in_proc_00001_pt_000${out_file_id_2d}_step_00000.nc
+    out_file=${tmpdir_tests}/scm_in_proc_00001_pt_000${out_file_id_2d}_step_00000.nc
 
     $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
 done
