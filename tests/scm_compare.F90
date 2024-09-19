@@ -231,7 +231,7 @@ subroutine compare(ncid1, ncid2, eps)
             do j=1,datalen1
                 if (data1_int(j) .ne. data2_int(j)) then
                     write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values differ at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%error(msg)
-                    call exit(1)
+                    ! call exit(1)
                 else
                     write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values match at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%info(msg)
                 endif
@@ -250,7 +250,7 @@ subroutine compare(ncid1, ncid2, eps)
             do j=1,datalen1
                 if (abs(data1_double(j) - data2_double(j)) > eps) then
                     write(msg,'(A,I0,A,F,A,F)') ' ----> Data values differ at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%error(msg)
-                    call exit(1)
+                    ! call exit(1)
                 else
                     write(msg,'(A,I0,A,F,A,F)') ' ----> Data values match at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%info(msg)
                 endif

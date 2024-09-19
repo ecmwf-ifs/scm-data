@@ -173,25 +173,25 @@ subroutine scm_setup(plugin_config, model_data)
 
   ! fill-in array of fields (SRF)
   do ifield=1,size(field_names_srf)
-    ! write(*,*) "getting field: ", trim(field_names_srf(ifield))
+    write(msg,'(A,A)') "getting field: ", trim(field_names_srf(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_srf(ifield)), fields_srf(ifield)) );
   enddo
 
   ! fill-in array of fields (CLD)
   do ifield=1,size(field_names_cld)
-    ! write(*,*) "getting field: ", trim(field_names_cld(ifield))
+    write(msg,'(A,A)') "getting field: ", trim(field_names_cld(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_cld(ifield)), fields_cld(ifield)) );
   enddo
   
   ! fill-in array of fields (SPC)
   do ifield=1,size(field_names_spc)
-    ! write(*,*) "getting field: ", trim(field_names_spc(ifield))
+    write(msg,'(A,A)') "getting field: ", trim(field_names_spc(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_spc(ifield)), fields_spc(ifield)) );
   enddo
 
   ! fill-in array of fields (OTHERS)
   do ifield=1,size(field_names_oth)
-    ! write(*,*) "getting field: ", trim(field_names_oth(ifield))
+    write(msg,'(A,A)') "getting field: ", trim(field_names_oth(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_oth(ifield)), fields_oth(ifield)) );
   enddo
   
@@ -439,8 +439,7 @@ type(atlas_FieldSet) :: gpfields_cld_nodes  ! CLD fields on nodes
 #include "wrt1c_nc.h"
 #include "create_nodefield.h"
 
-write(msg,'(A)')  "getini1c: start"
-call log%info(msg)
+write(msg,'(A)')  "getini1c: start"; call log%info(msg)
 
 call plume_check(model_data%get_int("NSTEP",NSTEP))
 

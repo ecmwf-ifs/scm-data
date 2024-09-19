@@ -64,6 +64,7 @@ subroutine setup()
   type(fckit_configuration) :: requested_data_catalogue
   integer :: ifield
   integer :: config_env_status
+  CHARACTER*127 msg
 
   call plume_check(plume_initialise())
   call plume_check(manager%initialise())
@@ -81,7 +82,7 @@ subroutine setup()
 
   ! Offer Plume all available fields (through fields provider)
   do ifield=1,n_fields
-    write(*,*), "offering: ", field_names(ifield)
+    write(msg,'(A,A)'), "offering: ", field_names(ifield); call log%info(msg)
     call plume_check(offers%offer_atlas_field(field_names(ifield), "on-request", "") )
   enddo
 
@@ -324,7 +325,7 @@ subroutine run( return_code )
   call fld_provider%provide_fields(plume_data)
 
   ! Initialise parameter
-  call plume_check( plume_data%create_int("NSTEP", 1) )
+  call plume_check( plume_data%create_int("NSTEP", 999) )
 
 
   ! Feed plugins with the data
@@ -336,30 +337,35 @@ subroutine run( return_code )
   ! *** this writes the netcdf files as in the original workflow
   call lonlatField%data(lonlat)
   call ghostField%data(ghost)
-  call fill_and_write(INFO, &
-                      LOCATIONS, &
-                      nb_locations, &
-                      zlat, &
-                      zlon, &
-                      nb_nodes, &
-                      ghost, &
-                      lonlat, &
-                      myproc, &
-                      zdelta, &
-                      LAREA, &
-                      PVAH, &
-                      PVBH, &
-                      DATAID, &
-                      nlev, &
-                      nstep, &
-                      sfcfields, &
-                      nproc, &
-                      fvm, &
-                      nodepoints, &
-                      windfield, &
-                      gpfields_from_sp, &
-                      gridpoints, &
-                      gpfields)
+
+  write(*,*) "INFO%IDATE: ", INFO%IDATE
+  write(*,*) "INFO%ITIME: ", INFO%ITIME
+  write(*,*) "INFO%ISTEP: ", INFO%ISTEP
+  write(*,*) "INFO%NSTEP: ", INFO%NSTEP
+  ! call fill_and_write(INFO, &
+  !                     LOCATIONS, &
+  !                     nb_locations, &
+  !                     zlat, &
+  !                     zlon, &
+  !                     nb_nodes, &
+  !                     ghost, &
+  !                     lonlat, &
+  !                     myproc, &
+  !                     zdelta, &
+  !                     LAREA, &
+  !                     PVAH, &
+  !                     PVBH, &
+  !                     DATAID, &
+  !                     nlev, &
+  !                     nstep, &
+  !                     sfcfields, &
+  !                     nproc, &
+  !                     fvm, &
+  !                     nodepoints, &
+  !                     windfield, &
+  !                     gpfields_from_sp, &
+  !                     gridpoints, &
+  !                     gpfields)
 
   
   ! Cleanup

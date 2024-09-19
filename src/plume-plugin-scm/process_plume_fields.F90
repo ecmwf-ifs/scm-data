@@ -77,9 +77,8 @@ type(atlas_mesh_Nodes) :: nodes
 INTEGER(KIND=JPIM) :: nb_nodes
 INTEGER(KIND=JPIM) :: jnode
 
-! ! *** TODO *** hardcoded field type! this needs to made generic
 
-#ifdef WITH_SCM_SINGLE_PRECISION  
+#ifdef WITH_SCM_SINGLE_PRECISION
 REAL(KIND=c_float), POINTER :: nodedata(:,:)
 REAL(KIND=c_float), POINTER :: values(:)
 REAL(KIND=c_float), POINTER :: values_plume_fields(:,:)
@@ -126,6 +125,12 @@ integer :: i,j
 #include "calcgeost.h"
 !-------------------------------------------------------------------------
 
+#ifdef WITH_SCM_SINGLE_PRECISION
+  write(msg,'(A)') "SCM: Using single precision"; call log%info(msg)
+#else
+  write(msg,'(A)') "SCM: Using double precision"; call log%info(msg)
+#endif
+
 IF( NPROC > 1 ) mpi_comm = fckit_mpi_comm()
 
 ! need minus as advective forcing on rhs
@@ -145,7 +150,7 @@ call windfield%data(wind)
 
 
 grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
-grad_lnsp = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=1, variables=2)
+grad_lnsp = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
 
 ! scalar gp from sp
 isize = gpfields_from_sp%size()
@@ -172,11 +177,16 @@ do jfld=1,isize
   endif
 
   if ( iparam == 152) then
-    ! write(*,*) "--- field%shape(): ", field%shape(), "--- grad_lnsp%shape(): ", grad_lnsp%shape()
-    ! write(*,*) "--- field%levels(): ", field%levels(), "--- grad_lnsp%levels(): ", grad_lnsp%levels()
+    ! write(*,*) "calculating grad_lnsp"
+    ! write(*,*) " --- field%shape(): ", field%shape()
+    ! write(*,*) " --- grad_lnsp%shape(): ", grad_lnsp%shape()
+    ! write(*,*) " --- field%levels(): ", field%levels()
+    ! write(*,*) " --- grad_lnsp%levels(): ", grad_lnsp%levels()
 
     call nodepoints%halo_exchange(field)
+    ! write(*,*) " --- halo exchanged "
     call nabla%gradient(field,grad_lnsp)
+    ! write(*,*) " --- nabla gradient calculated "
     call grad%data(grad_data)
     ! write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
     ! write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
