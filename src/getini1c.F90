@@ -69,8 +69,7 @@ type(fckit_mpi_comm) :: mpi_comm
 #include "su_wrt_nc.h"
 #include "wrt1c_nc.h"
 
-write(msg,'(A)')  "getini1c: start"
-call log%info(msg)
+write(msg,'(A)')  "getini1c: start"; call log%info(msg)
 
 mpi_comm = fckit_mpi_comm()
 ! processor
