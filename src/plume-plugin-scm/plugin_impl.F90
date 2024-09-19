@@ -454,8 +454,6 @@ if (.not.larea) then
   !$OMP END PARALLEL DO
 endif
 
-write(*,*) "fillvar done.." 
-
 ! write(*,*) "field_u%halo() = ", field_u%halo()
 gpfields_from_sp = atlas_FieldSet("nodepoints")
 do ifield=1,fields_spc_set%size()
@@ -476,7 +474,6 @@ do ifield=1,fields_cld_set%size()
   call gpfields_cld_nodes%add(field_tmp)
 enddo
 
-write(*,*) "calling process_plume_fields.."
 call process_plume_fields(nproc, &
                           myproc, &
                           nb_locations, &
@@ -495,15 +492,15 @@ do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     ! netcdf write this location from this processor
     if (.not.larea) then
-      write(msg,'(A)') " setting up output fields to netcdf  "; call log%info(msg)
-      write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%info(msg)
-      write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%info(msg)
-      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%info(msg)
-      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%info(msg)
-      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%info(msg)
+      write(msg,'(A)') " setting up output fields to netcdf  "; call log%debug(msg)
+      write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%debug(msg)
+      write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%debug(msg)
+      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%debug(msg)
+      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%debug(msg)
+      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%debug(msg)
 
       CALL SU_WRT_NC (myproc,PVAH,PVBH,dataid,iloc,locations(iloc)%IFILE_ID,nlev,NSTEP)
-      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE; call log%info(msg)
+      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE; call log%debug(msg)
       CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
 
     endif
