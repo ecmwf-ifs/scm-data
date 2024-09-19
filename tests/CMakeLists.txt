@@ -38,8 +38,8 @@ endif()
 
 # Copy plugin configs to build directory (if tests are enabled)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tests/plugin_configs
-                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../src/plume-plugin-scm/configs ${CMAKE_BINARY_DIR}/tests/plugin_configs
-                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../src/plume-plugin-scm/configs)
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/plugin_configs ${CMAKE_BINARY_DIR}/tests/plugin_configs
+                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/plugin_configs)
 
 add_custom_target(copy_configs_dir ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/plugin_configs)
 
