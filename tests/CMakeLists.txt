@@ -6,7 +6,7 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tests/data
                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_BINARY_DIR}/tests/data
                    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
-add_custom_target(copy_directory ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/data)
+add_custom_target(copy_data_dir ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/data)
 
 # tests for getini tool
 if ( HAVE_BUILD_TOOLS )
@@ -34,3 +34,24 @@ if ( HAVE_BUILD_TOOLS )
     )
 
 endif()
+
+
+# Copy plugin configs to build directory (if tests are enabled)
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tests/plugin_configs
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../src/plume-plugin-scm/configs ${CMAKE_BINARY_DIR}/tests/plugin_configs
+                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../src/plume-plugin-scm/configs)
+
+add_custom_target(copy_configs_dir ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/plugin_configs)
+
+# driver for testing the scm-plugin
+add_subdirectory(plugin_tester)
+
+ecbuild_configure_file(
+    test_scm_plugin.sh.in
+    test_scm_plugin.sh @ONLY
+)
+
+ecbuild_add_test(
+    TYPE     SCRIPT
+    COMMAND  test_scm_plugin.sh
+)

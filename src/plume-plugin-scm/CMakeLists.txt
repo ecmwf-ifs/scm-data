@@ -135,8 +135,3 @@ ecbuild_add_library(
         plume_f
         plume_plugin
 )
-
-
-if (HAVE_TESTS)
-    add_subdirectory(plugin_tester)
-endif()
