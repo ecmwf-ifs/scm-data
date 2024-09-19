@@ -90,7 +90,7 @@ icount4(2) = 1          !      -"-               written indices
 
 !...pressure levels (full levels = prognostic variables; see gppreh/gppref.F90)
 
-write(*,*) 'pressure ', ILOCATION%PP%plnsp, exp(ILOCATION%PP%plnsp)
+! write(*,*) 'pressure ', ILOCATION%PP%plnsp, exp(ILOCATION%PP%plnsp)
 
 zpresh(klev) = exp(ILOCATION%PP%plnsp)
 do j = 0, klev-1

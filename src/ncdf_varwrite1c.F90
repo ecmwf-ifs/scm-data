@@ -14,6 +14,7 @@ subroutine ncdf_varwrite1c (kncid, nlev, kstart, kcount, varname, pvar)
 ! Martin Koehler, 11-2000
 !-----------------------------------------------------------------------
 use yomvar
+use fckit_module, only: log => fckit_log
 
 implicit none
 
@@ -27,14 +28,16 @@ REAL*4                   :: zvar1d_temp(nlev) ! single precision
 !REAL(KIND=JPRB)            :: zvar1d_temp(nlev)
 INTEGER(KIND=JPIM)           :: ivarid, istatus
 INTEGER(KIND=JPIM), PARAMETER :: JPKD = KIND(zvar1d_temp)
+CHARACTER*127 msg
 
 #include "netcdf.inc"
 
 !-----------------------------------------------------------------------
 
-write(*,*) 'Writing to NetCDF (', nlev, ' levels):  ', varname, &
- '         mn ', sum(pvar)/nlev
-!write(*,*) pvar
+! write(*,*) 'Writing to NetCDF (', nlev, ' levels):  ', varname, &
+!  '         mn ', sum(pvar)/nlev
+
+! write(msg,'(A,I0,A,A,A,E)') 'Writing to NetCDF (', nlev, ' levels):  ', varname,'         mn ', sum(pvar)/nlev; call log%debug(msg)
 
 zvar1d_temp = REAL(pvar,JPKD)         !convert REAL(KIND=JPRB) to NetCDF REAL format
 
