@@ -12,7 +12,8 @@ tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin
 if [[ ! -e $tmpdir_tests ]]; then
     mkdir $tmpdir_tests
 else
-    echo "Directory $tmpdir_tests already exists.."
+    echo "Directory $tmpdir_tests already exists. Cleaning.."
+    rm -rf ${tmpdir_tests}/scm_in_proc_00001_pt*
 fi
 
 cd $tmpdir_tests
@@ -61,6 +62,3 @@ for out_file_id in $(seq 1 1 12); do
 
     $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
 done
-
-clean up
-rm -rf @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin
