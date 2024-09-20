@@ -8,7 +8,7 @@ datadir=@CMAKE_BINARY_DIR@/tests/data
 exedir=@CMAKE_BINARY_DIR@/bin
 
 
-tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir
+tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir_getini
 if [[ ! -e $tmpdir_tests ]]; then
     mkdir $tmpdir_tests
 else
@@ -56,3 +56,5 @@ for out_file_id in $(seq 1 1 12); do
     $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
 done
 
+Clean up
+rm -rf @CMAKE_BINARY_DIR@/tests/tmpdir_getini
