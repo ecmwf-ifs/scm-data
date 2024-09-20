@@ -59,7 +59,7 @@ INTEGER(KIND=JPIM) :: iloc
 
 type(atlas_Nabla) :: nabla
 type(atlas_Field) :: grad
-type(atlas_Field) :: grad_lnsp ! special case (1 lvl only)
+! type(atlas_Field) :: grad_lnsp ! special case (1 lvl only)
 type(atlas_Field) :: gradu
 type(atlas_Field) :: gradv
 type(atlas_Field) :: wind_u
@@ -150,7 +150,6 @@ call windfield%data(wind)
 
 
 grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
-grad_lnsp = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
 
 ! scalar gp from sp
 isize = gpfields_from_sp%size()
@@ -185,7 +184,7 @@ do jfld=1,isize
 
     call nodepoints%halo_exchange(field)
     ! write(*,*) " --- halo exchanged "
-    call nabla%gradient(field,grad_lnsp)
+    call nabla%gradient(field,grad)
     ! write(*,*) " --- nabla gradient calculated "
     call grad%data(grad_data)
     ! write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
