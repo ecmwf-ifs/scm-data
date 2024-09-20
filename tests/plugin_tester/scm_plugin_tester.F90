@@ -342,6 +342,7 @@ subroutine run( return_code )
   write(*,*) "INFO%ITIME: ", INFO%ITIME
   write(*,*) "INFO%ISTEP: ", INFO%ISTEP
   write(*,*) "INFO%NSTEP: ", INFO%NSTEP
+
   ! call fill_and_write(INFO, &
   !                     LOCATIONS, &
   !                     nb_locations, &
@@ -357,7 +358,7 @@ subroutine run( return_code )
   !                     PVBH, &
   !                     DATAID, &
   !                     nlev, &
-  !                     nstep, &
+  !                     666, &
   !                     sfcfields, &
   !                     nproc, &
   !                     fvm, &
