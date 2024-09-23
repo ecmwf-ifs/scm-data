@@ -44,7 +44,7 @@ module plugin_impl_mod
   use plugin_utils_mod, only : field_names_spc
   use plugin_utils_mod, only : field_names_oth
 
-  use plugin_utils_mod, only : param_name2idx
+  use plugin_utils_mod, only : param_name2idx, get_vertical_tables_from_namelist
 
 implicit none
 
@@ -155,6 +155,9 @@ subroutine scm_setup(plugin_config, model_data)
   type(atlas_Field) :: lonlatField
   type(atlas_Field) :: ghostField
 
+  character(256) :: vtable_testing_namelist
+  integer :: vtable_testing_namelist_status
+
 #ifdef WITH_SCM_SINGLE_PRECISION  
   REAL(KIND=c_float), POINTER :: dummy_data(:,:)
 #else
@@ -225,8 +228,15 @@ subroutine scm_setup(plugin_config, model_data)
   found = plugin_config%get("DELTA", ZDELTA) ! 
 
   ! vertical levels coefficients
-  call get_vertical_tables(NLEV, PVAH, PVBH)
-  
+  ! For testing only: read the vertical levels from namelist (for consistency)
+  call get_environment_variable("PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST", vtable_testing_namelist, status=vtable_testing_namelist_status)
+  if (vtable_testing_namelist_status == 0) then
+    write(msg,'(A,A)') "Reading vertical tables from namelist: ", trim(vtable_testing_namelist); call log%info(msg)
+    call get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH, PVBH)
+  else
+    call get_vertical_tables(NLEV, PVAH, PVBH)
+  endif
+
   ! point coordinates
   found = plugin_config%get("points", plugin_config_points)
   nb_locations = size(plugin_config_points)

@@ -113,6 +113,7 @@ ecbuild_add_library(
         plugin_utils.F90
         process_plume_fields.F90
         vert_coord_tables.F90
+        ../rdnam.F90
 
     DEFINITIONS
         ${PLUGINS_DEFINITIONS}

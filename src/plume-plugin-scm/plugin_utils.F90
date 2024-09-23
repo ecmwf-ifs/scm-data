@@ -187,6 +187,51 @@ function param_name2id(name) result(id)
         id = -999
     endif
 
-    end function param_name2id     
+    end function param_name2id
+
+
+! NOTE: This routine is for TESTING PURPOSES ONLY - used to read vertical tables from the test namelist
+subroutine get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH, PVBH)
+
+    use yomvar
+
+    implicit none
+
+    character(256) :: vtable_testing_namelist
+        
+    INTEGER, PARAMETER :: JMAXPTS = 100
+    INTEGER, PARAMETER :: JMAXLEV = 200
+
+    LOGICAL :: larea, lprognostic
+    INTEGER(KIND=JPIM) :: KLOCMAX, NSMAX, NSTEP
+
+    character(len=30) :: dataid, cgrid
+    REAL(KIND=JPRB), allocatable :: PLAT(:), PLON(:)
+    REAL(KIND=JPRB) :: DELTA
+    REAL(KIND=JPRB) :: LAT(JMAXPTS), LON(JMAXPTS)
+    REAL(KIND=JPRB) :: DVALH(0:JMAXLEV), DVBH(0:JMAXLEV)  
+
+    REAL(KIND=JPRB) :: LATN, LATS, LONW, LONE, TSTEP    
+    REAL(KIND=JPRB), allocatable, intent(out) :: PVAH(:), PVBH(:)
+    INTEGER(KIND=JPIM), intent(out) :: NLEV
+    
+    NAMELIST /NAMUS/ LAT, LON, LATN, LATS, LONW, LONE, LPROGNOSTIC, &
+     &               DATAID,TSTEP, DELTA, NSTEP, NLEV, NSMAX, CGRID, DVALH, DVBH
+
+    NLEV=-1
+
+    ! Read the namelist file
+    OPEN(51,FILE=vtable_testing_namelist)    
+    READ(51,NAMUS)
+    
+    if( NLEV > -1 ) THEN
+      allocate(pvah(0:nlev))
+      allocate(pvbh(0:nlev))
+      pvah(0:nlev) = DVALH(0:nlev)
+      pvbh(0:nlev) = DVBH(0:nlev)
+    endif
+    
+end subroutine get_vertical_tables_from_namelist
+
 
 end module plugin_utils_mod
