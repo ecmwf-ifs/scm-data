@@ -29,7 +29,7 @@ call atlas_library%initialise()
 num_args = command_argument_count()
 
 if (num_args /= 4) then
-  print *, "Usage: getini1c <sfc_grib_file> <cld_grib_file> <spec_grib_file> <namelist_file>"
+  print *, "Usage: getini1c_cli <sfc_grib_file> <cld_grib_file> <spec_grib_file> <namelist_file>"
   STOP 1
 else  
   call get_command_argument(1, sfc_grib_file)
