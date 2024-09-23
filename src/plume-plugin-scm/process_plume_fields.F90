@@ -125,12 +125,6 @@ integer :: i,j
 #include "calcgeost.h"
 !-------------------------------------------------------------------------
 
-#ifdef WITH_SCM_SINGLE_PRECISION
-  write(msg,'(A)') "SCM: Using single precision"; call log%info(msg)
-#else
-  write(msg,'(A)') "SCM: Using double precision"; call log%info(msg)
-#endif
-
 IF( NPROC > 1 ) mpi_comm = fckit_mpi_comm()
 
 ! need minus as advective forcing on rhs

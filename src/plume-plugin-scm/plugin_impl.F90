@@ -167,7 +167,7 @@ subroutine scm_setup(plugin_config, model_data)
 
 #include "nearest_distance.h"
 
-  write(msg,'(A)')  "--> getini1c: start"; call log%info(msg)
+  write(msg,'(A)')  "--> getini1c: start"; call log%debug(msg)
 
   ! setup MPI info
   mpi_comm = fckit_mpi_comm()
@@ -449,7 +449,6 @@ type(atlas_FieldSet) :: gpfields_cld_nodes  ! CLD fields on nodes
 #include "wrt1c_nc.h"
 #include "create_nodefield.h"
 
-write(msg,'(A)')  "getini1c: start"; call log%info(msg)
 
 call plume_check(model_data%get_int("NSTEP",NSTEP))
 
@@ -519,7 +518,6 @@ enddo
 ! finalisation
 call config%final()
 
-write(msg,'(A)')  "getini1c: end"; call log%info(msg)
 end subroutine scm_run
 
 

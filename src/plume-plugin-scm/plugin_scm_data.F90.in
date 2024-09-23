@@ -40,8 +40,10 @@ module user_plugin_module__@PLUGIN_NAME@
         real :: val
         character(len=10) :: val_str
 
-        call log%info("SCM-PLUGIN running..")
-        call scm_run(config, model_data)        
+        call log%info("SCM-PLUGIN executing step..")
+        call scm_run(config, model_data)
+        call log%info("SCM-PLUGIN step completed !")
+
     end subroutine
     
     
