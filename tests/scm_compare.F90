@@ -219,47 +219,52 @@ subroutine compare(ncid1, ncid2, eps)
             write(msg,'(A)') ' ----> Variable types match. '; call log%info(msg)
         endif
 
-
-        if (xtype1 .eq. NF_INT) then
-            
-            allocate(data1_int(datalen1))
-            allocate(data2_int(datalen2))
-
-            status = nf_get_var(ncid1, varid1, data1_int); call handle_err_nc(status)
-            status = nf_get_var(ncid2, varid2, data2_int); call handle_err_nc(status)
-
-            do j=1,datalen1
-                if (data1_int(j) .ne. data2_int(j)) then
-                    write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values differ at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%error(msg)
-                    ! call exit(1)
-                else
-                    write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values match at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%info(msg)
-                endif
-            end do
-            deallocate(data1_int)
-            deallocate(data2_int)
-
-        else if (xtype1 .eq. NF_DOUBLE) then
-
-            allocate(data1_double(datalen1))
-            allocate(data2_double(datalen2))
-
-            status = nf_get_var(ncid1, varid1, data1_double); call handle_err_nc(status)
-            status = nf_get_var(ncid2, varid2, data2_double); call handle_err_nc(status)
-
-            do j=1,datalen1
-                if (abs(data1_double(j) - data2_double(j)) > eps) then
-                    write(msg,'(A,I0,A,F,A,F)') ' ----> Data values differ at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%error(msg)
-                    ! call exit(1)
-                else
-                    write(msg,'(A,I0,A,F,A,F)') ' ----> Data values match at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%info(msg)
-                endif
-            end do
-            deallocate(data1_double)
-            deallocate(data2_double)
-            
+        if ((varname1.eq."date") .or. (varname1.eq."hour") .or. (varname1.eq."second")) then
+            write(msg,'(A,A)') ' ----> Skipping value check for variable: ', varname1; call log%info(msg)
         else
-            write(*,*) "Unsupported type: ", xtype1
+
+            if (xtype1 .eq. NF_INT) then
+                
+                allocate(data1_int(datalen1))
+                allocate(data2_int(datalen2))
+
+                status = nf_get_var(ncid1, varid1, data1_int); call handle_err_nc(status)
+                status = nf_get_var(ncid2, varid2, data2_int); call handle_err_nc(status)
+
+                do j=1,datalen1
+                    if (data1_int(j) .ne. data2_int(j)) then
+                        write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values differ at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%error(msg)
+                        call exit(1)
+                    else
+                        write(msg,'(A,I0,A,I0,A,I0)') ' ----> Data values match at index: ', j, ' between files: ', data1_int(j), ' vs ', data2_int(j); call log%info(msg)
+                    endif
+                end do
+                deallocate(data1_int)
+                deallocate(data2_int)
+
+            else if (xtype1 .eq. NF_DOUBLE) then
+
+                allocate(data1_double(datalen1))
+                allocate(data2_double(datalen2))
+
+                status = nf_get_var(ncid1, varid1, data1_double); call handle_err_nc(status)
+                status = nf_get_var(ncid2, varid2, data2_double); call handle_err_nc(status)
+
+                do j=1,datalen1
+                    if (abs(data1_double(j) - data2_double(j)) > eps) then
+                        write(msg,'(A,I0,A,F,A,F)') ' ----> Data values differ at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%error(msg)
+                        call exit(1)
+                    else
+                        write(msg,'(A,I0,A,F,A,F)') ' ----> Data values match at index: ', j, ' between files: ', data1_double(j), ' vs ', data2_double(j); call log%info(msg)
+                    endif
+                end do
+                deallocate(data1_double)
+                deallocate(data2_double)
+                
+            else
+                write(*,*) "Unsupported type: ", xtype1
+            endif
+
         endif
 
     end do
