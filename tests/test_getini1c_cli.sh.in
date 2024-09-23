@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# (C) Copyright 2024- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation nor
+# does it submit to any jurisdiction.
+
+
+set -eux
+
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+bindir=@CMAKE_CURRENT_BINARY_DIR@
+datadir=@CMAKE_BINARY_DIR@/tests/data
+exedir=@CMAKE_BINARY_DIR@/bin
+
+
+tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir_getini_cli
+if [[ ! -e $tmpdir_tests ]]; then
+    mkdir $tmpdir_tests
+else
+    echo "Directory $tmpdir_tests already exists. Cleaning.."
+    rm -rf ${tmpdir_tests}/scm_in_proc_00001_pt*
+fi
+
+cd $tmpdir_tests
+
+# Run the scm-data
+$exedir/getini1c_cli $datadir/sfc_grib_t159 $datadir/cld_grib_t159 $datadir/spec_grib_t159 $datadir/namelist_1c_t159
+
+
+# Compare NetCDF files against reference files
+for out_file_id in $(seq 1 1 12); do
+    out_file_id_2d=$(printf "%02d" $out_file_id)
+    ref_file=${datadir}/reference/scm_in_0001_${out_file_id_2d}.nc
+    out_file=${tmpdir_tests}/scm_in_proc_00001_pt_000${out_file_id_2d}_step_00000.nc
+    $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
+done

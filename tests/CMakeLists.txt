@@ -33,18 +33,29 @@ if ( HAVE_BUILD_TOOLS)
     # Test getini1c can only be enabled in double precision 
     # Atlas scatter spectral field  does not support real64
     if (HAVE_SCM_SINGLE_PRECISION)
-        message("Single precision is enabled => test_getini1c not built.")
+        message("Single precision is enabled => test_getini1c* tests not built.")
     else()
 
+        # test of getini1c
         ecbuild_configure_file(
             test_getini1c.sh.in
             test_getini1c.sh @ONLY
         )
-
         ecbuild_add_test(
             TYPE     SCRIPT
             COMMAND  test_getini1c.sh
         )
+
+        # test of getini1c_cli
+        ecbuild_configure_file(
+            test_getini1c_cli.sh.in
+            test_getini1c_cli.sh @ONLY
+        )
+        ecbuild_add_test(
+            TYPE     SCRIPT
+            COMMAND  test_getini1c_cli.sh
+        )
+
     endif()
 
 endif()

@@ -8,7 +8,7 @@
 ! does it submit to any jurisdiction.
 
 SUBROUTINE RDNAM(LAREA,LPROGNOSTIC,DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
- & PVAH, PVBH, KLOCMAX, PLAT, PLON)
+ & PVAH, PVBH, KLOCMAX, PLAT, PLON, namelist_path)
 !-----------------------------------------------------------------------
 !     reads the namelist: 
 !         LAREA       O    .TRUE.       Select all points in lat-lon rectangle
@@ -32,6 +32,7 @@ character(len=30), intent(out) :: dataid, cgrid
 REAL(KIND=JPRB), allocatable, intent(out) :: PVAH(:), PVBH(:)
 REAL(KIND=JPRB), intent(out) :: DELTA
 REAL(KIND=JPRB), allocatable, intent(out) :: PLAT(:), PLON(:)
+character(len=*), intent(in), optional :: namelist_path
 
 REAL(KIND=JPRB) :: LAT(JMAXPTS), LON(JMAXPTS)
 REAL(KIND=JPRB) :: DVALH(0:JMAXLEV), DVBH(0:JMAXLEV)  
@@ -67,7 +68,13 @@ DELTA=0.1
 LPROGNOSTIC=.TRUE.
 LAREA=.FALSE.
 DATAID='nocomments'
-OPEN(51,FILE='namelist_1c')
+
+! read namelist from file
+if (present(namelist_path)) then
+  open(51,FILE=trim(namelist_path))
+else
+  open(51,FILE='namelist_1c')
+endif
 
 !     read namelist
 !     -------------

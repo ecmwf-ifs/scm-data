@@ -14,14 +14,33 @@ USE MPL_MODULE, only : mpl_end
 implicit none
 
 integer :: return_code
+integer :: num_args
+character(len=1024) :: sfc_grib_file
+character(len=1024) :: cld_grib_file
+character(len=1024) :: spec_grib_file
+character(len=1024) :: namelist_file
 
 #include "getini1c_run.h"
 
 ! initialise Atlas
 call atlas_library%initialise()
 
+! get command line arguments
+num_args = command_argument_count()
+
+if (num_args /= 4) then
+  print *, "Usage: getini1c <sfc_grib_file> <cld_grib_file> <spec_grib_file> <namelist_file>"
+  STOP 1
+else  
+  call get_command_argument(1, sfc_grib_file)
+  call get_command_argument(2, cld_grib_file)
+  call get_command_argument(3, spec_grib_file)
+  call get_command_argument(4, namelist_file)
+endif
+
+
 ! run getini1c program
-call getini1c_run(return_code)
+call getini1c_run(return_code, sfc_grib_file, cld_grib_file, spec_grib_file, namelist_file)
 
 ! finalise mpl
 call mpl_end()

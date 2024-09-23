@@ -58,7 +58,7 @@ INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
 LOGICAL, intent(in) :: LSINGLE
 INTEGER(KIND=JPIM),intent(in) :: NPROC
 INTEGER(KIND=JPIM),intent(in) :: MYPROC
-CHARACTER(len=30), intent(in) :: FILE
+CHARACTER(len=*), intent(in) :: FILE
 
 type(atlas_FieldSet), intent(inout) :: spfields
 type(atlas_FieldSet), intent(inout) :: gpfields
@@ -77,7 +77,7 @@ CHARACTER*127 msg
 
 INTEGER(KIND=JPIM) :: j, iret, ifi, ifo, ilenf, iparam, ilev, idate, itime, istep, itag, iflds, isp, itot, jfld
 
-character(len=10) :: fieldname, str
+character(len=10) :: fieldname
 type(atlas_Field) :: field, fieldg, fields, fields_input, fields_local
 type(atlas_Metadata) :: metadata
 INTEGER(KIND=JPIM) :: JMAX
@@ -113,7 +113,6 @@ IF( NPROC > 1 ) IO_SHIFT = 1
 IF( NPROC > 1 ) CALL MPL_INIT()
 ITAG = 123456
 IRET = 0
-str=''
 
 if( .not.(spectral%is_null()) ) then
   JMAX = MIN(NPROC-IO_SHIFT,4_JPIM)
@@ -124,9 +123,8 @@ endif
 NFIELDS=0
 IF( MYPROC == IOMASTER ) THEN
   ! open file
-  str = TRIM(FILE)
-  write(*,*) 'opening ', str
-  CALL GRIB_OPEN_FILE(IFI,str,'R')
+  write(*,*) '*** reading file: ', TRIM(FILE)
+  CALL GRIB_OPEN_FILE(IFI, TRIM(FILE), 'R')
   CALL GRIB_COUNT_IN_FILE(IFI,NFIELDS)
 ENDIF
 
@@ -154,7 +152,7 @@ IF( NFIELDS > 0 ) THEN
   ALLOCATE(IMAXF(JMAX))
   IOPROC(:) = -1
 ELSE
-  write(*,*) ' error reading file: ', str
+  write(*,*) ' error reading file: ', TRIM(FILE)
   CALL EXIT(1)
 ENDIF
 
@@ -203,6 +201,8 @@ ITEST(:) = MYPROC
 IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
   write(*,*) 'number of fields :', NFIELDS/JMAX + 1 , NFIELDS, IMAXREC
+  write(*,*) "ISIZE:",  ISIZE
+  write(*,*) "IMAXFLDS: ", IMAXFLDS
   ISEND=1
   IMAXFLDS = MAX(NPROC,1)
 

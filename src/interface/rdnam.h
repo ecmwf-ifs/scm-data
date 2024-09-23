@@ -9,7 +9,7 @@
 
 INTERFACE
 SUBROUTINE RDNAM(LAREA,LPROGNOSTIC,DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
-		 & PVAH, PVBH, KLOCMAX, PLAT, PLON)
+		 & PVAH, PVBH, KLOCMAX, PLAT, PLON, namelist_path)
 
 use yomvar
 
@@ -26,6 +26,7 @@ character(len=30), intent(out) :: dataid, cgrid
 REAL(KIND=JPRB), allocatable, intent(out) :: PVAH(:), PVBH(:)
 REAL(KIND=JPRB), intent(out) :: DELTA
 REAL(KIND=JPRB), allocatable, intent(out) :: PLAT(:), PLON(:)
+character(len=*), intent(in), optional :: namelist_path
 
 END SUBROUTINE RDNAM
 END INTERFACE

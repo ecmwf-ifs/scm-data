@@ -51,7 +51,7 @@ INTEGER(KIND=JPIM), PARAMETER :: JPMAXGRID = 5120_JPIM*2560_JPIM
 LOGICAL, intent(in) :: LSINGLE
 INTEGER(KIND=JPIM),intent(in) :: NPROC
 INTEGER(KIND=JPIM),intent(in) :: MYPROC
-CHARACTER(len=30), intent(in) :: FILE
+CHARACTER(len=*), intent(in) :: FILE
 
 type(atlas_FieldSet), intent(inout) :: spfields
 type(atlas_FieldSet), intent(inout) :: gpfields
