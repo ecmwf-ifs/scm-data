@@ -18,6 +18,10 @@ if( HAVE_BUILD_TOOLS )
                                         wrt1c_nc.F90
                                 INCLUDES
                                         interface/
+
+                                DEFINITIONS
+                                        ${PLUGINS_DEFINITIONS}
+
                                 LIBS 
                                         atlas_f
                                         trans_dp
