@@ -14,7 +14,10 @@ set -eux
 
 srcdir=@CMAKE_CURRENT_SOURCE_DIR@
 bindir=@CMAKE_CURRENT_BINARY_DIR@
-datadir=@CMAKE_BINARY_DIR@/tests/data
+
+input_data_dir=@TEST_DATA_DIR@/input_files_t159
+output_data_dir=@TEST_DATA_DIR@/output_files_t159
+
 exedir=@CMAKE_BINARY_DIR@/bin
 
 
@@ -29,13 +32,17 @@ fi
 cd $tmpdir_tests
 
 # Run the scm-data
-$exedir/getini1c_cli $datadir/sfc_grib_t159 $datadir/cld_grib_t159 $datadir/spec_grib_t159 $datadir/namelist_1c_t159
+$exedir/getini1c_cli \
+  $input_data_dir/sfc_grib_t159 \
+  $input_data_dir/cld_grib_t159 \
+  $input_data_dir/spec_grib_t159 \
+  $input_data_dir/namelist_1c_t159
 
 
 # Compare NetCDF files against reference files
 for out_file_id in $(seq 1 1 12); do
     out_file_id_2d=$(printf "%02d" $out_file_id)
-    ref_file=${datadir}/reference/scm_in_0001_${out_file_id_2d}.nc
+    ref_file=${output_data_dir}/scm_in_0001_${out_file_id_2d}.nc
     out_file=${tmpdir_tests}/scm_in_proc_00001_pt_000${out_file_id_2d}_step_00000.nc
     $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
 done
