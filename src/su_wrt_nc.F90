@@ -46,7 +46,12 @@ character (len=40) :: nc_name
 
 INTEGER(KIND=JPIM), PARAMETER :: JPKD=KIND(zv)
 
-CHARACTER*127 msg
+CHARACTER*1024 msg
+
+! Output directory (from env variable)
+character(256) :: scm_data_output_dir
+integer :: config_env_status
+character(len=:), allocatable :: filename_complete
 
 !-----------------------------------------------------------------------
 
@@ -59,21 +64,34 @@ iaccur=NF_DOUBLE
 
 !        2.    open NetCDF file.
 !              -----------------
-write(msg,'(A,I0)') "NSTEP = ",NSTEP; call log%debug(msg)
-write(nc_name,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_', myproc, '_pt_', inum, '_step_', NSTEP, '.nc'
 
-inquire ( file=nc_name, exist=file_exist )
+write(msg,'(A,I0)') "NSTEP = ",NSTEP; call log%debug(msg)
+
+! check if the environment variable SCM_DATA_OUTPUT_DIR is set, if so write output files there
+write(nc_name,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',inum,'_step_',NSTEP,'.nc'
+call get_environment_variable("SCM_DATA_OUTPUT_DIR", scm_data_output_dir, status=config_env_status)
+
+! if the env variable SCM_DATA_OUTPUT_DIR is set, write the output files there
+! otherwise write them in the current directory
+if (config_env_status .eq. 0) then
+  filename_complete = trim(scm_data_output_dir)//'/'//trim(nc_name)
+else
+  filename_complete = trim(nc_name)
+end if
+
+write(msg,'(A,A)') 'Writing output file: ', filename_complete; call log%info(msg)
+
+inquire ( file=filename_complete, exist=file_exist )
 
 if ( file_exist ) then
-  istatus = NF_OPEN (nc_name, nf_write, incid)       !open old file
+  istatus = NF_OPEN (filename_complete, nf_write, incid)       !open old file
   call handle_err_nc(istatus)
   write(msg,'(A)') 'scm_in.nc exists - no setup'; call log%debug(msg)
 else
-  
-  istatus = NF_CREATE (nc_name, nf_clobber, incid)     !create new file
+  istatus = NF_CREATE (filename_complete, nf_clobber, incid)     !create new file
   call handle_err_nc(istatus)
 
-  write(msg,'(A,A,A,I0)') 'NETCDF-FILE ', nc_name, ' OPENED ON UNIT ', incid; call log%debug(msg)
+  write(msg,'(A,A,A,I0)') 'NETCDF-FILE ', filename_complete, ' OPENED ON UNIT ', incid; call log%debug(msg)
 
 !        3.    meta data set up.
 !              -----------------
