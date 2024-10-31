@@ -74,6 +74,9 @@ REAL(KIND=JPRB), ALLOCATABLE :: zlat(:), zlon(:)
 CHARACTER*127 msg
 type(fckit_mpi_comm) :: mpi_comm
 
+! name of output NetCDF file
+character (len=40) :: nc_filename
+
 #include "rdnam.h"
 #include "nearest_distance.h"
 #include "read_grib_scm.h"
@@ -290,10 +293,15 @@ do iloc=1, nb_locations
 !      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%info(msg)
 !      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%info(msg)
 !      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%info(msg)
-      CALL SU_WRT_NC (myproc,PVAH,PVBH,dataid,iloc,locations(iloc)%IFILE_ID,nlev,0)
-      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE 
-      call log%info(msg)
+      
+      ! setup output netcdf file
+      write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',0,'.nc'
+      CALL SU_WRT_NC (nc_filename,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
+
+      ! write output fields to netcdf
+      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE ; call log%info(msg)
       CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
+      
     endif
   endif
 enddo

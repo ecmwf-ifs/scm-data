@@ -105,6 +105,12 @@ type(fckit_mpi_comm) :: mpi_comm
 INTEGER(KIND=JPIM) :: NPROC
 INTEGER(KIND=JPIM) :: MYPROC
 
+
+! Output directory (from env variable)
+character(1024) :: scm_data_output_dir
+integer :: config_env_status
+
+
 public :: scm_setup
 public :: scm_run
 public :: scm_teardown
@@ -373,6 +379,11 @@ subroutine scm_setup(plugin_config, model_data)
     endif
   enddo
 
+
+! check if the environment variable PLUME_PLUGINS_OUTPUT_DIR is set, if so the plugin will write output files there
+call get_environment_variable("PLUME_PLUGINS_OUTPUT_DIR", scm_data_output_dir, status=config_env_status)
+
+
 ! finalisation
 call config%final()
 call nodes%final()
@@ -452,6 +463,12 @@ integer :: ifield
 
 type(atlas_FieldSet) :: gpfields_cld_nodes  ! CLD fields on nodes
 
+! name of output NetCDF file
+character (len=40) :: nc_filename
+
+! full path of output NetCDF file
+character(len=:), allocatable :: nc_fullpath
+
 
 #include "fillvar_from_plume.h"
 #include "su_wrt_nc.h"
@@ -505,6 +522,7 @@ call process_plume_fields(nproc, &
                           gridpoints, &
                           gpfields_cld_nodes)
 
+
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     ! netcdf write this location from this processor
@@ -516,7 +534,21 @@ do iloc=1, nb_locations
       write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%debug(msg)
       write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%debug(msg)
 
-      CALL SU_WRT_NC (myproc,PVAH,PVBH,dataid,iloc,locations(iloc)%IFILE_ID,nlev,NSTEP)
+      ! assemble the filename
+      write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',NSTEP,'.nc'
+
+      ! if the env variable PLUME_PLUGINS_OUTPUT_DIR is set, write the output files there
+      ! otherwise write them in the current directory
+      if (config_env_status .eq. 0) then
+        nc_fullpath = trim(scm_data_output_dir)//'/'//trim(nc_filename)
+      else
+        nc_fullpath = trim(nc_filename)
+      end if
+
+      ! setup the output NetCDF file
+      CALL SU_WRT_NC (nc_fullpath,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
+
+      ! write data to the NetCDF file
       write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE; call log%debug(msg)
       CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
 

@@ -77,6 +77,9 @@ INTEGER(KIND=JPIM) :: J
 INTEGER(KIND=JPIM) :: iloc
 CHARACTER*127 msg
 
+! name of output NetCDF file
+character (len=40) :: nc_filename
+
 #include "nearest_distance.h"
 #include "compute_fields.h"
 #include "fillvar.h"
@@ -139,8 +142,13 @@ do iloc=1, nb_locations
       write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE ; 
       call log%info(msg)
       
-      CALL SU_WRT_NC (myproc,PVAH,PVBH,dataid,iloc,locations(iloc)%IFILE_ID,nlev,nstep)
+      ! set up the netcdf file
+      write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',nstep,'.nc'      
+      CALL SU_WRT_NC (nc_filename,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
+
+      ! write the fields to the netcdf file
       CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
+
     endif
   endif
 enddo

@@ -7,31 +7,29 @@
 ! granted to it by virtue of its status as an intergovernmental organisation nor
 ! does it submit to any jurisdiction.
 
-SUBROUTINE SU_WRT_NC (myproc,PVAH,PVBH,dataid,inum,incid,klev,nstep)
+SUBROUTINE SU_WRT_NC (filename,PVAH,PVBH,dataid,incid,klev)
 
 use yomvar
 use fckit_module, only: log => fckit_log
 
 ! Setup of relevant quantities for the netcdf files
 
+! filename     I  Name of the output netcdf file
 !  PVAH        I  Vertical coordinate A-table
 !  PVBH        I  Vertical coordinate B-table
 !  dataid      I  Text identiying the dataset
-!  inum        I  station number
 !  incid       O  Logical unit number of netcdf file
-! klev         I Number of vertical levels
 
 implicit none
 
 #include "netcdf.inc"
 
-INTEGER(KIND=JPIM), intent(in) :: myproc
-REAL(KIND=JPRB),    intent(in) :: PVAH(0:KLEV), PVBH(0:KLEV)
+character(len=*),   intent(in) :: filename
+REAL(KIND=JPRB),    intent(in) :: PVAH(0:KLEV)
+REAL(KIND=JPRB),    intent(in) :: PVBH(0:KLEV)
 character(len=*),   intent(in) :: dataid
 INTEGER(KIND=JPIM), intent(out):: incid
-INTEGER(KIND=JPIM), intent(in) :: inum
 INTEGER(KIND=JPIM), intent(in) :: klev
-INTEGER(KIND=JPIM), intent(in) :: nstep
 
 REAL*4    :: zv(0:klev)            ! for netcdf single precision
 !REAL(KIND=JPRB)            :: zv(0:klev)
@@ -41,17 +39,10 @@ INTEGER(KIND=JPIM) i, &
  & ilev(klev), ilevp1(klev+1), ilevs(ncss), istatus, iaccur
 logical   :: file_exist
 character (len=50) :: title
-! character (len=51) :: nc_name
-character (len=40) :: nc_name
 
 INTEGER(KIND=JPIM), PARAMETER :: JPKD=KIND(zv)
 
 CHARACTER*1024 msg
-
-! Output directory (from env variable)
-character(256) :: scm_data_output_dir
-integer :: config_env_status
-character(len=:), allocatable :: filename_complete
 
 !-----------------------------------------------------------------------
 
@@ -65,33 +56,22 @@ iaccur=NF_DOUBLE
 !        2.    open NetCDF file.
 !              -----------------
 
-write(msg,'(A,I0)') "NSTEP = ",NSTEP; call log%debug(msg)
+! write(msg,'(A,I0)') "NSTEP = ",NSTEP; call log%debug(msg)
 
-! check if the environment variable SCM_DATA_OUTPUT_DIR is set, if so write output files there
-write(nc_name,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',inum,'_step_',NSTEP,'.nc'
-call get_environment_variable("SCM_DATA_OUTPUT_DIR", scm_data_output_dir, status=config_env_status)
 
-! if the env variable SCM_DATA_OUTPUT_DIR is set, write the output files there
-! otherwise write them in the current directory
-if (config_env_status .eq. 0) then
-  filename_complete = trim(scm_data_output_dir)//'/'//trim(nc_name)
-else
-  filename_complete = trim(nc_name)
-end if
+write(msg,'(A,A)') 'Writing output file: ', filename; call log%info(msg)
 
-write(msg,'(A,A)') 'Writing output file: ', filename_complete; call log%info(msg)
-
-inquire ( file=filename_complete, exist=file_exist )
+inquire ( file=filename, exist=file_exist )
 
 if ( file_exist ) then
-  istatus = NF_OPEN (filename_complete, nf_write, incid)       !open old file
+  istatus = NF_OPEN (filename, nf_write, incid)       !open old file
   call handle_err_nc(istatus)
   write(msg,'(A)') 'scm_in.nc exists - no setup'; call log%debug(msg)
 else
-  istatus = NF_CREATE (filename_complete, nf_clobber, incid)     !create new file
+  istatus = NF_CREATE (filename, nf_clobber, incid)     !create new file
   call handle_err_nc(istatus)
 
-  write(msg,'(A,A,A,I0)') 'NETCDF-FILE ', filename_complete, ' OPENED ON UNIT ', incid; call log%debug(msg)
+  write(msg,'(A,A,A,I0)') 'NETCDF-FILE ', filename, ' OPENED ON UNIT ', incid; call log%debug(msg)
 
 !        3.    meta data set up.
 !              -----------------
