@@ -19,11 +19,15 @@ ecbuild_enable_fortran( REQUIRED MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/module )
 ecbuild_find_package( eccodes REQUIRED )
 
 
-# Build command line tools
-ecbuild_add_option( FEATURE BUILD_TOOLS
+# Build command line SCM tools
+ecbuild_add_option( FEATURE SCM_TOOLS
                     DESCRIPTION "Build the command line tools"
                     DEFAULT ON )
 
+# Build SCM tests
+ecbuild_add_option( FEATURE SCM_TESTS
+                    DESCRIPTION "Build SCM tests"
+                    DEFAULT ON )
 
 ecbuild_add_option( FEATURE ATLAS
                     DESCRIPTION "scm: Support for atlas"
@@ -72,7 +76,7 @@ endif()
 
 add_subdirectory( src )
 
-if(HAVE_TESTS)
+if(HAVE_SCM_TESTS)
   add_subdirectory( tests )
 endif()
 

@@ -7,7 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-if( HAVE_BUILD_TOOLS )
+if( HAVE_SCM_TOOLS )
 
         LIST( APPEND COMMON_SOURCES 
                 read_grib_scm.F90

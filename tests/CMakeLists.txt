@@ -58,7 +58,7 @@ set(TEST_DATA_DIR ${CMAKE_BINARY_DIR}/tests/data)
 
 
 # tests for getini tool
-if ( HAVE_BUILD_TOOLS)
+if ( HAVE_SCM_TOOLS)
 
     # tool to compare the output of getini1c
     ecbuild_add_executable( TARGET scm_compare
