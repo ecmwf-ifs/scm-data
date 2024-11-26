@@ -7,9 +7,6 @@
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
                 "DATAID": "valid_t159_2015",
-                "CGRID" : "N80",
-                "NSMAX" : 159,
-                "NLEV"  : 62, 
                 "DELTA" : 0.75,
                 "points": [
                     {"ID": 1, "lat": 51.61, "lon": -0.81},

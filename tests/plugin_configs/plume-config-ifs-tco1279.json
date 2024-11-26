@@ -6,10 +6,7 @@
             "core-config": {
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
-                "DATAID": "data_ifs_test_tco1279",
-                "CGRID" : "O640",
-                "NSMAX" : 1279,
-                "NLEV"  : 137, 
+                "DATAID": "data_ifs_test_tco1279", 
                 "DELTA" : 0.1,
                 "points": [
                     { "ID": 0, "lat": 33.33, "lon": 7.77 },

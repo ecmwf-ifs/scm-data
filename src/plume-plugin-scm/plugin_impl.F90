@@ -127,7 +127,6 @@ subroutine scm_setup(plugin_config, model_data)
   type(atlas_Config) :: config
 
   CHARACTER(LEN=:), allocatable :: DATAID
-  CHARACTER(LEN=:), allocatable :: CGRID
   CHARACTER(LEN=30) :: FILE
   CHARACTER(LEN=10) :: FIELDNAME
 
@@ -136,7 +135,6 @@ subroutine scm_setup(plugin_config, model_data)
   INTEGER :: LPROGNOSTIC_INT
   LOGICAL :: LSINGLE
   
-  INTEGER(KIND=JPIM) :: NSMAX
   INTEGER(KIND=JPIM) :: I
   INTEGER(KIND=JPIM) :: J
   INTEGER(KIND=JPIM) :: JFLD
@@ -221,6 +219,10 @@ subroutine scm_setup(plugin_config, model_data)
 
   call plume_check(model_data%get_int("NSTEP",NSTEP))
 
+  ! get the functionspace from first field
+  input_fs = fields_srf(1)%functionspace()
+  nlev = input_fs%levels()
+
   ! read parameters from plugin-core configuration
   found = plugin_config%get("LPROGNOSTIC", LPROGNOSTIC_INT)
   if (LPROGNOSTIC_INT == 1) then
@@ -236,11 +238,9 @@ subroutine scm_setup(plugin_config, model_data)
     LAREA = .false.
   endif  
 
+  ! get other options from config file
   found = plugin_config%get("DATAID", DATAID) ! ID of data
-  found = plugin_config%get("NSMAX", NSMAX) ! MAx number of shperical harmonics
-  found = plugin_config%get("CGRID", CGRID) ! grid type
-  found = plugin_config%get("NLEV", NLEV) ! N vertical levels
-  found = plugin_config%get("DELTA", ZDELTA) ! 
+  found = plugin_config%get("DELTA", ZDELTA)  ! max radius of search for nearest grid point
 
   ! vertical levels coefficients
   ! For testing only: read the vertical levels from namelist (for consistency)
@@ -281,8 +281,6 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0)')   "nb_locations = ", nb_locations; call log%info(msg)
   write(msg,'(A,F5.3)') "zdelta = ", zdelta; call log%info(msg)
   write(msg,'(A,I0)')   "nlev = ", nlev; call log%info(msg)
-  write(msg,'(A,I0)')   "nsmax = ", nsmax; call log%info(msg)
-  write(msg,'(A,A)')    "cgrid = ", cgrid; call log%info(msg)
 
   do ipoint=1,nb_locations
     write(msg,'(A,F10.3,A,F10.3)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint); call log%info(msg)
@@ -295,16 +293,14 @@ subroutine scm_setup(plugin_config, model_data)
   config = atlas_Config()
   call config%set("radius",6371229.0)
 
-  ! extract partition from first field
-  input_fs = fields_srf(1)%functionspace()
+  ! grid from model
   input_grid = input_fs%grid()
   allocate(input_fs_parent, source=input_fs)
   partitioner = atlas_MatchingPartitioner(input_fs_parent)
 
-  ! generate grid/mesh
-  grid = atlas_StructuredGrid(cgrid)
+  ! mesh
   meshgenerator = atlas_Meshgenerator(config)
-  mesh = meshgenerator%generate(grid,partitioner)
+  mesh = meshgenerator%generate(input_grid,partitioner)
 
   nodes = mesh%nodes()
   
@@ -316,8 +312,8 @@ subroutine scm_setup(plugin_config, model_data)
   call ghostField%data(ghost)
 
   write(msg,'(A,I0,A,I0)') "nodes: ", nb_nodes, ", lonlat%size(): ", lonlatField%size(); call log%info(msg)
-  ! write(msg,'(A,I0)') "MYPROC: ", MYPROC ; write(*,*) msg
 
+  ! find the nearest grid point to each user specified lat/lon location
   call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
 
   do j=1, nb_locations
@@ -332,7 +328,7 @@ subroutine scm_setup(plugin_config, model_data)
   enddo
 
   write(msg,'(A)') "finished nearest distances "; call log%info(msg)
-  write(msg,'(A,I0)') "grid%size(): ", grid%size(); call log%info(msg)
+  write(msg,'(A,I0)') "input_grid%size(): ", input_grid%size(); call log%info(msg)
 
   ! this is the functionspace nodepoints
   fvm = atlas_fvm_Method(mesh, config)
@@ -388,7 +384,7 @@ call get_environment_variable("PLUME_PLUGINS_OUTPUT_DIR", scm_data_output_dir, s
 call config%final()
 call nodes%final()
 call mesh%final()
-call grid%final()
+call input_grid%final()
 call meshgenerator%final()
 call partitioner%final()
 
@@ -436,12 +432,11 @@ type(atlas_Field) :: fields_uv(2)
 INTEGER(KIND=c_int), POINTER :: ghost(:)
 REAL(KIND=c_double), POINTER :: lonlat(:,:)
 
-character(len=30) :: dataid, cgrid, file
+character(len=30) :: dataid, file
 character(len=10) :: fieldname
 REAL(KIND=JPRB) :: zdelta
 logical :: LSINGLE
 
-INTEGER(KIND=JPIM) :: nsmax
 INTEGER(KIND=JPIM) :: I
 INTEGER(KIND=JPIM) :: J
 INTEGER(KIND=JPIM) :: jfld

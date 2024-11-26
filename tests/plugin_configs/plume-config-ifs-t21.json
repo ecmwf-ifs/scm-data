@@ -7,9 +7,6 @@
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
                 "DATAID": "data_ifs_test_t21",
-                "CGRID" : "F16",
-                "NSMAX" : 159,
-                "NLEV"  : 19, 
                 "DELTA" : 6.0,
                 "points": [
                     { "ID": 0, "lat": 33.33, "lon": 7.77 },
