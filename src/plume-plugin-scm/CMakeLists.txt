@@ -138,7 +138,6 @@ ecbuild_add_library(
 
     PRIVATE_LIBS
         fckit
-        fiat
         atlas_f
         NetCDF::NetCDF_Fortran
         plume_f

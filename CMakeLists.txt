@@ -63,7 +63,7 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     DESCRIPTION "plume plugin"
                     DEFAULT OFF
                     CONDITION ENABLE_ATLAS
-                    REQUIRED_PACKAGES plume fiat )
+                    REQUIRED_PACKAGES plume )
 
 
 if( HAVE_SCM_SINGLE_PRECISION ) 
