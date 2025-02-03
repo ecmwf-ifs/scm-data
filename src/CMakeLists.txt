@@ -49,6 +49,9 @@ if( HAVE_SCM_TOOLS )
                                 LIBS ${COMMON_DEP_LIBS}
                               )
 
+        # timeint tool
+        add_subdirectory( timeint )
+
 endif()
 
 

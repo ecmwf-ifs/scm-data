@@ -1,0 +1,26 @@
+# This yaml file provides the optional switches for the SCM namelist. 
+# The file is read by scm_namelist.py, which includes the defaults for
+# the TWPICE case. If nothing is set in this namelist then the 
+# defaults will be used. Please refer to scm_namelist.py for defaults 
+# and further details.
+caseid : 'VOCALS'
+tstep : [1800.00] # timestep in seconds, defined as a list to permit multiple namelists with different dt.
+run_length : 'h48' # run length in hours, i.e. h*** or days, i.e. d**
+#
+# nml_entries are some basic switches and settings that can be changed in  
+# the scm namelist template, found in namelist_templates/<cycle>/scm_nml_template.txt
+# Below are defaults based on TWPICE standard case.
+nml_entries :
+  lvarfor : True  # T = use time-varying forcing, F = use initial profile for forcing
+  lugvg   : False # T = turn on geostrophic U,V wind (horizontal pressure gradient) forcing
+  lwadvcld: False # T = turn on vertical advection of cloud variables (cloud fraction/liquid/ice
+  ltadv   : True  # T = turn on horizontal advection tendencies for temperature (T)
+  lqadv   : True  # T = turn on horizontal advection tendencies for humidity (Q)
+  lvarsst : True  # T = use time-varying surface temperature (and lat/lon) from input file
+  lsfcflx : False # T = use surface flux boundary condition (sensible,latent) from input file
+  lrelax  : True  # T = turn on relaxation to reference profile
+  rdtrelax: 28800 # relaxation timescale (seconds)
+  luvrel  : True  # T = turn on relaxation for U,V
+  ltqrel  : False # T = turn on relaxation for T,Q
+  ruvrel_plev : 110000 # only relax U,V above this pressure (Pa) (default=all)
+  rtqrel_plev : 2000   # only relax T,Q above this pressure (Pa) (default=all)

@@ -1,0 +1,10 @@
+&NAMUS
+  LAT={lat},
+  LON={lon},
+  lprognostic={prognostic},
+  TSTEP  = {tstep},
+  DATAID = "{dataid}",
+  NSMAX  = {res},
+  CGRID = "{grid}",
+  NLEV  = {levels},
+  DELTA = {ZDELTA},

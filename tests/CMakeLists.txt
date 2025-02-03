@@ -113,23 +113,27 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tests/plugin_configs
 add_custom_target(copy_configs_dir ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/plugin_configs)
 
 
-# Test getini1c can only be enabled in double precision 
-# Atlas scatter spectral field  does not support real64
-if (HAVE_SCM_SINGLE_PRECISION)
-    message("Single precision is enabled => test_scm_plugin not built.")
-else()
+if (HAVE_SCM_PLUME_PLUGIN)
 
-    # driver for testing the scm-plugin
-    add_subdirectory(plugin_tester)
+    # Test getini1c can only be enabled in double precision 
+    # Atlas scatter spectral field  does not support real64
+    if (HAVE_SCM_SINGLE_PRECISION)
+        message("Single precision is enabled => test_scm_plugin not built.")
+    else()
 
-    ecbuild_configure_file(
-        test_scm_plugin.sh.in
-        test_scm_plugin.sh @ONLY
-    )
+        # driver for testing the scm-plugin
+        add_subdirectory(plugin_tester)
 
-    ecbuild_add_test(
-        TYPE     SCRIPT
-        COMMAND  test_scm_plugin.sh
-    )
+        ecbuild_configure_file(
+            test_scm_plugin.sh.in
+            test_scm_plugin.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE     SCRIPT
+            COMMAND  test_scm_plugin.sh
+        )
+
+    endif()
 
 endif()

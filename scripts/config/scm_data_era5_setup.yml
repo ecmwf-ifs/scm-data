@@ -1,0 +1,119 @@
+# name of the data source - "openifs" or "era5"
+# are the only names that work at present
+name: "era5" 
+platform : "ec-hpc2020"
+log_level: "INFO"           # Level of log information output to screen and file. INFO is enough for most 
+                              # DEBUG will produces much more info, which can lead to large log files if applied to 
+                              # large request
+
+paths :
+  climate_data_toplevel: ""
+                          # path for the top-level directory that contains climate files and vtables
+  getini1c_bin: ""
+                          # set path for the scm_data_bundle/build/bin, bin only exists if bundle has been built
+  getini1c_data_top: ""
+                          # top-level directory path for the store of either MARS retrievals or OpenIFS output. 
+                          # Upon successful execution getini1c_driver.py, this directory will contain a directory 
+                          # with the naming convention `data_<name>_<grid>`
+  scm_forcing_out: "" 
+                          # Path for the output from getini1c
+
+scm :                         
+  # switches to control the single column data extract (any new switches must start with extract!)
+  extract_scm_column: True    # request initial conditions forcing for one column, fixed in space
+  extract_scm_track: False    # request the forcing for one column following a track, with lat and lon changing over time
+  extract_scm_array: False    # request initial conditions/forcing for an array of single columns, each fixed in space 
+  # dates and initial time requested for the SCM
+  datebeg: "20081101"         # Initial date required for scm forcing
+  dateend: "20081103"         # end date required for scm forcing
+  tstep: 10800.00             # timestep for SCM forcing files
+  lat: ['-20.0' ]             # latitude in degrees
+  lon: ['-80.0' ]             # longitude in degrees
+  latlon_from_file: False     # test for presence of latlonfile, used to set latitude and longitude
+  latlonfile: ""
+                              # file containing dates, latitude and longitude (optional)
+
+control:                      
+  # control logic for scripts
+  retrieve_data: True         # retrieve data from MARS
+  copy_data: True             # copy retrieved data to new directory for processing 
+  cleanup: True               # Removes any copied files
+  create_forcing_data: True   # If true the scripts will run getini1c (in almost all cases this should be true)
+  concat_forcing_data: True   # If true, scripts will concatinate the individual netcdf files from getini1c 
+                              # into one file, which can be used in the SCM. This is a debug switch (probably temporary) 
+                              # and should always be true if create_forcing_data = True.
+  create_scm_namelist: True   # If true the scripts will create an example namelist for the data generated
+                              # This switch enables the reading and use of scm_nml_setup.yml file 
+  interp_append_clim: True    # Set to True, scripts will append if aluvp does not exist in file already
+                              # Set to False if files have been updated with climatology data
+  # Setup for the basic data source, e.g. cycle, resolution, grid type, climate version etc
+  cycle: "43r3"               # IFS or OpenIFS cycle
+  iniclass: 'ea'              # iniclass in the MARS request = ea, do not change 
+  exp_version: "1"            # experiment version, should be 1, do not change   
+  res: "639"                  # resolution (spectral truncation) of the simulation
+  gtype: "l_2"                # grid type l_2 for linear-reduced _4 cubic octahedral
+  grid: "N320"                # number of latitude lines between equator and pole 
+  levels: 137                 # Number of vertical levels  
+  init_time: "00"             # Time of the forecast from datahub 
+  tstep: 10800.00             # timestep between retrievals (in seconds)
+  climvers: "climate.v015"    # climate version file
+  # getini1c specific settings
+  ZDELTA: 0.3                 # distance in degrees acceptable to find nearest point to specified lat-lon
+                              # important to select large enough envelope, this is tied to the resolution, 
+                              # i.e. 0.3 will work with RESOL=399 and 0.1 will work with RESOL=1279
+  dataid: "valid_tl639"       # datails output to the netcdf file
+  prognostic: ".true."
+
+# Next sections contain all the variables that need to be retrieved from MARS or copied from  
+# IFS/OpenIFS output to produce the SCM data. The keys, i.e., spec, sfc, cld, alb etc, are the 
+# file prefixes that are expected by other modules and it is recommended not to change them
+# 
+# Short description of variables taken from https://codes.ecmwf.int/grib/param-db/
+grib_shortnames:              
+  spec:                       # spectral variables 
+    - "vo"                    # vorticity 
+    - "d"                     # divergence
+    - "t"                     # temperature
+    - "w"                     # vertical velocity
+    - "lnsp"                  # log of surface pressure
+
+  sfc:                        # surface variables
+    - "stl1"                  # soil temperature level 1
+    - "stl2"                  # soil temperature level 2 
+    - "stl3"                  # soil temperature level 3
+    - "stl4"                  # soil temperature level 4
+    - "swvl1"                 # volumetric soil water layer 1 
+    - "swvl2"                 # volumetric soil water layer 2 
+    - "swvl3"                 # volumetric soil water layer 3
+    - "swvl4"                 # volumetric soil water layer 4
+    - "istl1"                 # ice temperature layer 1
+    - "istl2"                 # ice temperature layer 2
+    - "istl3"                 # ice temperature layer 3
+    - "istl4"                 # ice temperature layer 4
+    - "sd"                    # snow depth 
+    - "src"                   # skin reservoir content 
+    - "skt"                   # skin temperature 
+    - "ci"                    # sea ice area fraction
+    - "sst"                   # sea surface temperature (# sst may need to be sstk for the era data)
+    - "tsn"                   # temperature of snow layer
+    - "asn"                   # snow albedo
+    - "rsn"                   # snow density
+                              
+  cld:                        # moisture/cloud fields
+    - "q"                     # specific humidity
+    - "cc"                    # fraction of cloud cover
+    - "clwc"                  # specific cloud liquid water content
+    - "ciwc"                  # specific cloud ice water content
+    - "crwc"                  # specific rain water content
+    - "cswc"                  # specific snow water content
+                              
+  
+clim_vars:                    # Required climatology variables, key needed the file prefix
+  alb: "174"                  # albedo
+  aluvp : "15"                # UV visible albedo for direct radiation
+  aluvd : "16"                # UV visible albedo for diffuse radiation
+  alnip : "17"                # Near IR albedo for direct radiation
+  alnid : "18"                # Near IR albedo for diffuse radiation
+  lail : "66"                 # Leaf area index, low vegetation (clim)
+  laih : "67"                 # Leaf area index, high vegetation (clim)
+
