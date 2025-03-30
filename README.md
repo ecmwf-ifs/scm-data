@@ -5,7 +5,8 @@ This is the repository for creating netcdf initial and forcing data for the sing
 The programme uses Atlas to compute derivatives and the required advective tendencies on model levels.
 
 ## Disclaimer
-This software is still under development and not yet ready for operational use.
+- *This package is made available to support research collaborations and is not officially supported by ECMWF*
+- *This software is still under development and not yet ready for operational use*
 
 
 # How to use
@@ -43,6 +44,30 @@ Runtime dependencies:
 
 ### Installation
 scm-data employs an out-of-source build/install based on CMake.
+
+#### Easy Install
+To easily install the scm-data package with all the ECMWF dependencies, follow the steps below:
+```
+cd <scm-data-directory>/bundle
+```
+create the bundle (download all the necessary ECMWF dependencies)
+```
+./scm-data-bundle create
+```
+Build the bundle. Optionally specify build-type and build-dir if default is not suitable:
+```
+./scm-data-bundle build --build-type=<Release|Debug|RelWithDebInfo> --build-dir=<build-dir>
+```
+NOTE: for building the bundle in the ECMWF HPC system, an ecbuild configuration file (that loads the necessary system modules) is also provided. To use it, simply add the `--arch` option:
+```
+./scm-data-bundle build --build-type=<Release|Debug|RelWithDebInfo> --build-dir=<build-dir> --arch arch/ecmwf/hpc2020/intel
+```
+Other building options to can be queried via:
+```
+./scm-data-bundle build --help
+```
+
+#### Advanced Install
 Make sure ecbuild is installed and the ecbuild executable script is found ( `which ecbuild` ).
 Now proceed with installation as follows:
 

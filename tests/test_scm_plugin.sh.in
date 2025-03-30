@@ -60,7 +60,7 @@ configs_dir=@CMAKE_BINARY_DIR@/tests/plugin_configs
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-""}:@CMAKE_BINARY_DIR@/lib
 export PLUME_CONFIG_FILE=$configs_dir/plume-config-ifs-t159.json
-export PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST=${tmpdir_tests}/namelist_1c
+export PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST=./namelist_1c
 
 # Run the scm-data plugin driver
 $exedir/scm_plugin_tester
