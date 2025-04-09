@@ -1,0 +1,80 @@
+name: build-hpc
+
+# Controls when the action will run
+on:
+
+  # Trigger the workflow on all pushes to main and develop, except on tag creation
+  push:
+    branches:
+    - main
+    - develop
+    tags-ignore:
+    - '**'
+
+  # Trigger the workflow on all pull requests
+  pull_request: ~
+
+  # Allow workflow to be dispatched on demand
+  workflow_dispatch: ~
+
+  # Trigger after public PR approved for CI
+  pull_request_target:
+    types: [labeled]
+
+env:
+  CTEST_PARALLEL_LEVEL: 1
+  CACHE_SUFFIX: v1 # Increase to force new cache to be created
+
+jobs:
+  ci-hpc:
+    name: ci-hpc
+    if: ${{ !github.event.pull_request.head.repo.fork && github.event.action != 'labeled' || github.event.label.name == 'approved-for-ci' }}
+
+    strategy:
+      fail-fast: false  # false: try to complete all jobs
+
+      matrix:
+        name:
+          - hpc-intel-matrix
+
+        include:
+          - name: hpc-intel-matrix
+            site: ac-batch
+            troika_user_secret: HPC_CI_SSH_USER
+            sbatch_options: |
+              #SBATCH --time=00:20:00
+              #SBATCH --ntasks=2
+              #SBATCH --cpus-per-task=16
+              #SBATCH --mem=32G
+              #SBATCH --qos=nf
+
+
+    runs-on: [self-hosted, linux, hpc]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: ecmwf/reusable-workflows/ci-hpc-generic@v2
+        with:
+          site: ${{ matrix.site }}
+          troika_user: ${{ secrets[matrix.troika_user_secret] }}
+          sbatch_options: ${{ matrix.sbatch_options }}
+          output_dir: ${{ matrix.output_dir || '' }}
+          workdir: ${{ matrix.workdir || '' }}
+          template_data: |
+            cmake_options:
+              - -DENABLE_MPI=ON
+              - ${{ matrix.cmake_options || '' }}
+            ctest_options: ${{ matrix.ctest_options || '' }}
+
+          template: |
+
+            cd ${{ github.workspace }}/bundle
+
+            # create the bundle
+            ./scm-data-bundle create
+
+            # build the bundle
+            ./scm-data-bundle build --build-dir build --arch arch/ecmwf/hpc2020/intel --with-scm-plume-plugin -j 16
+
+            # test scm-data
+            ctest --test-dir ./build/scm-data --output-on-failure
