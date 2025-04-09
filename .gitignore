@@ -40,3 +40,9 @@ infero_version.h
 *.swp
 *.txt.user
 .DS_Store
+
+# bundle
+bundle/ecbundle
+bundle/source
+bundle/build
+bundle/install

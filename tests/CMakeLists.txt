@@ -63,8 +63,13 @@ if ( HAVE_SCM_TOOLS)
     # tool to compare the output of getini1c
     ecbuild_add_executable( TARGET scm_compare
                             SOURCES
-                                scm_compare.F90
+                                ../src/module/yomvar.F90
                                 ../src/handle_err_nc.F90
+                                scm_compare.F90
+                            INCLUDES
+                                $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
+                                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+                                $<BUILD_INTERFACE:${CMAKE_Fortran_MODULE_DIRECTORY}>
                             LIBS
                                 NetCDF::NetCDF_Fortran
                                 fckit

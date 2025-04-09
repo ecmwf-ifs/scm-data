@@ -1,0 +1,110 @@
+---
+### Bundle
+
+name    : scm-data-bundle
+version : 0.2.1
+cmake   : CMAKE_LINK_DEPENDS_NO_SHARED=ON
+          ENABLE_OMP=ON
+
+projects :
+
+    - ecbuild :
+        git     : https://github.com/ecmwf/ecbuild
+        version : 3.8.5
+        bundle  : false
+
+    - eccodes :
+        git     : https://github.com/ecmwf/eccodes
+        version : 2.38.3
+        cmake   : >
+            ENABLE_ECCODES_THREADS=ON
+            ECCODES_ENABLE_NETCDF=OFF
+            ECCODES_ENABLE_FORTRAN=ON
+            ECCODES_ENABLE_MEMFS=ON
+            ECCODES_INSTALL_EXTRA_TOOLS=ON
+            ECCODES_ENABLE_AEC=ON
+            ECCODES_ENABLE_JPG_LIBOPENJPEG=OFF
+
+    - eckit :
+        git     : https://github.com/ecmwf/eckit
+        version : 1.28.5
+        cmake   : >
+            ECKIT_ENABLE_XXHASH=OFF
+            ECKIT_ENABLE_VIENNACL=OFF
+            ECKIT_ENABLE_EIGEN=OFF
+            ECKIT_ENABLE_ARMADILLO=OFF
+            ECKIT_ENABLE_CUDA=OFF
+            ECKIT_ENABLE_SANDBOX=OFF
+            ECKIT_ENABLE_MKL=OFF
+            ECKIT_ENABLE_LAPACK=OFF
+            ECKIT_ENABLE_MPI=ON
+
+    - fckit :
+        git     : https://github.com/ecmwf/fckit
+        version : 0.13.1
+        require : eckit
+        cmake   : >
+            FCKIT_ENABLE_FINAL=OFF
+
+    - fiat :
+        git     : https://github.com/ecmwf-ifs/fiat
+        version : 1.1.0
+
+    - ectrans :
+        git     : https://github.com/ecmwf-ifs/ectrans
+        version : 1.2.0
+        require : fiat
+
+    - atlas :
+        git     : https://github.com/ecmwf/atlas
+        version : 0.39.0
+        require : eckit fckit
+        cmake   : >
+            ATLAS_ENABLE_TESSELATION=OFF
+            ATLAS_ENABLE_ECTRANS=ON
+            ATLAS_ENABLE_CLANG_TIDY=OFF
+            ATLAS_ENABLE_GRIDTOOLS_STORAGE=OFF
+
+    - plume :
+        git     : https://github.com/ecmwf/plume
+        version : 0.2.0
+        require : eckit fckit atlas
+
+    - scm-data :
+        git     : https://github.com/ecmwf/scm-data
+        version : develop
+        require : eccodes fiat ectrans atlas
+
+options :
+
+    - with-scm-tools:
+        help  : Build the scm-data tools
+        cmake : ENABLE_SCM_TOOLS=ON
+
+    - without-scm-tools:
+        help  : Do not build the scm-data tools
+        cmake : ENABLE_SCM_TOOLS=OFF
+
+    - with-scm-tests :
+        help  : Build the scm-data tests
+        cmake : ENABLE_SCM_TESTS=ON
+
+    - without-scm-tests :
+        help  : Do not build the scm-data tests
+        cmake : ENABLE_SCM_TESTS=OFF
+
+    - with-scm-plume-plugin :
+        help  : Build the scm-data plume plugin
+        cmake : ENABLE_SCM_PLUME_PLUGIN=ON
+
+    - without-scm-plume-plugin :
+        help  : Do not build the scm-data plume plugin
+        cmake : ENABLE_SCM_PLUME_PLUGIN=OFF
+
+    - with-scm-plume-plugin-single-precision :
+        help  : Build the scm-data plume plugin with single precision
+        cmake : ENABLE_SCM_SINGLE_PRECISION=ON
+
+    - without-scm-plume-plugin-single-precision :
+        help  : Do not build the scm-data plume plugin with single precision
+        cmake : ENABLE_SCM_SINGLE_PRECISION=OFF
