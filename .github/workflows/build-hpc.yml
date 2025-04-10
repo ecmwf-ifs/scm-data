@@ -40,6 +40,7 @@ jobs:
         include:
           - name: hpc-intel-matrix
             site: ac-batch
+            bundle_arch: ecmwf/hpc2020/intel
             troika_user_secret: HPC_CI_SSH_USER
             sbatch_options: |
               #SBATCH --time=00:20:00
@@ -65,16 +66,38 @@ jobs:
               - -DENABLE_MPI=ON
               - ${{ matrix.cmake_options || '' }}
             ctest_options: ${{ matrix.ctest_options || '' }}
+            bundle_arch: ${{ matrix.bundle_arch || '' }}
 
           template: |
 
-            cd ${{ github.workspace }}/bundle
+            REPO=${{ github.event.pull_request.head.repo.full_name || github.repository }}
+            SHA=${{ github.event.pull_request.head.sha || github.sha }}
+            name=$(basename $REPO)
+
+            echo "::group::Checkout $name"
+            echo "+ mkdir -p $name"
+            mkdir -p $name
+            echo "+ pushd $name"
+            pushd $name
+            echo "+ git init"
+            git init
+            echo "+ git remote add origin git@github.com:$REPO"
+            git remote add origin git@github.com:$REPO
+            echo "+ git fetch origin $SHA"
+            git fetch origin $SHA
+            echo "+git reset --hard FETCH_HEAD"
+            git reset --hard FETCH_HEAD
+            echo "+ popd"
+            popd
+            echo "::endgroup::"
+
+            cd ${name}/bundle
 
             # create the bundle
             ./scm-data-bundle create
 
             # build the bundle
-            ./scm-data-bundle build --build-dir build --arch arch/ecmwf/hpc2020/intel --with-scm-plume-plugin -j 16
+            ./scm-data-bundle build --build-dir build --arch {{ bundle_arch }} --with-scm-plume-plugin -j 16
 
             # test scm-data
             ctest --test-dir ./build/scm-data --output-on-failure
