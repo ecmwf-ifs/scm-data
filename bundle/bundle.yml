@@ -5,6 +5,7 @@ name    : scm-data-bundle
 version : 0.2.1
 cmake   : CMAKE_LINK_DEPENDS_NO_SHARED=ON
           ENABLE_OMP=ON
+          ENABLE_SINGLE_PRECISION=OFF
 
 projects :
 
@@ -103,8 +104,8 @@ options :
 
     - with-scm-plume-plugin-single-precision :
         help  : Build the scm-data plume plugin with single precision
-        cmake : ENABLE_SCM_SINGLE_PRECISION=ON
+        cmake : ENABLE_SINGLE_PRECISION=ON
 
     - without-scm-plume-plugin-single-precision :
         help  : Do not build the scm-data plume plugin with single precision
-        cmake : ENABLE_SCM_SINGLE_PRECISION=OFF
+        cmake : ENABLE_SINGLE_PRECISION=OFF

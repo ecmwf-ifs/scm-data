@@ -35,19 +35,35 @@ if( HAVE_SCM_TOOLS )
 
         # getini1c tool (legacy tool)
         ecbuild_add_executable( TARGET getini1c
-                                SOURCES ${COMMON_SOURCES} getini1c.F90
-                                INCLUDES interface/
-                                DEFINITIONS ${PLUGINS_DEFINITIONS}
+                                SOURCES
+                                    ${COMMON_SOURCES}
+                                    getini1c.F90
+                                INCLUDES
+                                        interface/
+                                DEFINITIONS ${SCM_TOOLS_DEFINITIONS}
                                 LIBS ${COMMON_DEP_LIBS}
                               )
 
+        # Set the Fortran module directory for getini1c
+        set_target_properties(getini1c
+                PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tools_mods_dir
+        )
+
         # getini1c_cli tool
         ecbuild_add_executable( TARGET getini1c_cli
-                                SOURCES ${COMMON_SOURCES} getini1c_cli.F90
-                                INCLUDES interface/
-                                DEFINITIONS ${PLUGINS_DEFINITIONS}
+                                SOURCES
+                                    ${COMMON_SOURCES}
+                                    getini1c_cli.F90
+                                INCLUDES
+                                        interface/
+                                DEFINITIONS ${SCM_TOOLS_DEFINITIONS}
                                 LIBS ${COMMON_DEP_LIBS}
                               )
+
+        # Set the Fortran module directory for getini1c_cli
+        set_target_properties(getini1c_cli
+                PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tools_mods_dir
+        )
 
         # timeint tool
         add_subdirectory( timeint )

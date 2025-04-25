@@ -57,29 +57,44 @@ ecbuild_get_test_multidata(TARGET test_output_files_t159
 set(TEST_DATA_DIR ${CMAKE_BINARY_DIR}/tests/data)
 
 
-# tests for getini tool
-if ( HAVE_SCM_TOOLS)
 
-    # tool to compare the output of getini1c
+
+# Test getini1c and plugin test can only be enabled in double precision 
+# Atlas scatter spectral field  does not support real64
+if (HAVE_SINGLE_PRECISION AND NOT HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
+    message("Double precision NOT enabled => scm_compare not built.")
+else()
+
+    # tool to compare the output of getini1c and/or plugin
     ecbuild_add_executable( TARGET scm_compare
                             SOURCES
                                 ../src/module/yomvar.F90
                                 ../src/handle_err_nc.F90
                                 scm_compare.F90
                             INCLUDES
+                                ../src/interface/
                                 $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
                                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-                                $<BUILD_INTERFACE:${CMAKE_Fortran_MODULE_DIRECTORY}>
                             LIBS
                                 NetCDF::NetCDF_Fortran
                                 fckit
-                          )
+                        )
 
-    
+    # Set the Fortran module directory for scm_compare
+    set_target_properties(scm_compare
+        PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/scm_compare_mods_dir
+    )
+endif()
+
+
+
+
+# tests for getini tool
+if ( HAVE_SCM_TOOLS)
 
     # Test getini1c can only be enabled in double precision 
     # Atlas scatter spectral field  does not support real64
-    if (HAVE_SCM_SINGLE_PRECISION)
+    if (HAVE_SINGLE_PRECISION)
         message("Single precision is enabled => test_getini1c* tests not built.")
     else()
 
@@ -120,11 +135,9 @@ add_custom_target(copy_configs_dir ALL DEPENDS ${CMAKE_BINARY_DIR}/tests/plugin_
 
 if (HAVE_SCM_PLUME_PLUGIN)
 
-    # Test getini1c can only be enabled in double precision 
+    # Test_scm_plugin can only be enabled in double precision 
     # Atlas scatter spectral field  does not support real64
-    if (HAVE_SCM_SINGLE_PRECISION)
-        message("Single precision is enabled => test_scm_plugin not built.")
-    else()
+    if (HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
 
         # driver for testing the scm-plugin
         add_subdirectory(plugin_tester)
@@ -138,7 +151,8 @@ if (HAVE_SCM_PLUME_PLUGIN)
             TYPE     SCRIPT
             COMMAND  test_scm_plugin.sh
         )
-
+    else()
+        message("Double Precision is NOT enabled => test_scm_plugin is NOT built.")
     endif()
 
 endif()
