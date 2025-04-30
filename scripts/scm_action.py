@@ -46,8 +46,16 @@ class SetLatLon(SCMAction):
         super().__init__(config, time_logger)
         self.latlon_data = None
 
-    def execute_(self):
+    def execute_(self):       
+        logger = logging.getLogger(__name__)
         self.latlon_data = scm_data_input.set_latlon_and_check(self.config)
+        if self.latlon_data['tstep'] != self.config['scm']['tstep'] :
+            logger.info(f"User time step is {self.config['scm']['tstep']} seconds")
+            logger.info(f"Track file time step is {self.latlon_data['tstep']} seconds")
+            logger.info(f"Adjusting user time step to match the track file time step: {self.latlon_data['tstep']} seconds")
+            # adjust the user time step to match the track file time step
+            self.config['scm']['tstep'] = self.latlon_data['tstep']
+            logger.info(f"Adjusting user end_time to match the track file time step: {self.latlon_data['end_time']} ") 
 
     def get_results_(self):
         return self.latlon_data

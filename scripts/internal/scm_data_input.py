@@ -201,6 +201,105 @@ def check_switches_and_paths(user_input):
     return timeint, path_dict
 
 
+def latlon_track_check(user_input):
+
+    import pandas as pd
+
+    latlonfile = user_input['scm']['latlonfile']
+    datetimebeg = user_input['scm']['datebeg']
+    datetimeend = user_input['scm']['dateend']
+    #start_time = user_input['scm']['start_time']
+    tstep = user_input['scm']['tstep']
+
+    logger = logging.getLogger(__name__)
+
+    # Read the latlon track file
+    track_coords = pd.read_csv(latlonfile)
+
+    # Remove whitespace from column names to prevent keyerror in assignment to the list
+    track_coords.columns = track_coords.columns.str.strip()
+
+    # Ensure all data in track_coords is treated as strings, so that it matches the string 
+    # input from user_input
+    track_coords = track_coords.astype(str)
+
+    # Normalize column names to lowercase
+    track_coords.columns = track_coords.columns.str.lower()
+
+    # Convert datetime column to pandas datetime format
+    track_coords['datetime'] = pd.to_datetime(track_coords['datetime'], format='%Y%m%d%H')
+    logger.info(f"""latlon_data dates for samples in {latlonfile} : {track_coords['datetime']}""")
+    
+    # Convert datetime column to string format for comparison
+    track_coords['datetime_str'] = track_coords['datetime'].dt.strftime('%Y%m%d%H')
+
+    # Check if any datetime starts with datebeg or dateend
+    if not (track_coords['datetime_str'].str.startswith(datetimebeg).any() and 
+            track_coords['datetime_str'].str.startswith(datetimeend).any()):
+        logger.error(f"User-defined start date {datetimebeg} or end date {datetimeend} does not exist in the track data. Exiting.")
+        sys.exit()
+    
+    logger.info(f"User-defined start date {datetimebeg} and end date {datetimeend} exist in the track data.")
+
+    # Convert user-defined start and end dates to panadas datetime format
+    datebeg_starttime = pd.to_datetime(datetimebeg, format='%Y%m%d%H')
+    # Note: Increment dateend by one day to include the full day
+    dateend_endtime = pd.to_datetime(datetimeend, format='%Y%m%d%H') + pd.Timedelta(days=1)
+    print(f"datebeg_starttime = {datebeg_starttime}")
+    print(f"dateend_endtime = {dateend_endtime}")
+
+    # Compare dateend_endtime with the last datetime in the track data
+    if track_coords['datetime'].iloc[-1] < dateend_endtime:
+        dateend_endtime = track_coords['datetime'].iloc[-1]
+
+    # Filter track data to include only rows within the specified date range
+    filtered_track_coords = track_coords[
+        track_coords['datetime'].between(datebeg_starttime, dateend_endtime)
+    ]
+
+    # Calculate time differences between consecutive rows
+    time_diffs = filtered_track_coords['datetime'].diff().dt.total_seconds().dropna()
+
+    # Check if all time differences are the same
+    if time_diffs.nunique() == 1:
+        logger.info(f"All time differences in the track file are the same: {time_diffs.iloc[0]} seconds.")
+    else:
+        logger.error(f"Time differences in the track file are not consistent: {time_diffs.tolist()}. Exiting.")
+        sys.exit()
+
+    # Check if the time difference is greater than or equal to 3600 seconds
+    if time_diffs.iloc[0] < 3600:
+        logger.warning(f"Time difference in the track file is less than 3600 seconds: {time_diffs.iloc[0]} seconds.")
+    else:
+        logger.info(f"Time difference in the track file is greater than or equal to 3600 seconds: {time_diffs.iloc[0]} seconds.")
+
+    # Filter data to include only rows where datetime is on the hour
+    filtered_track_coords = filtered_track_coords[
+        filtered_track_coords['datetime'].dt.minute.eq(0) & filtered_track_coords['datetime'].dt.second.eq(0)
+    ]
+
+    if filtered_track_coords.empty:
+        logger.error("No data points on the hour found in the track file. Exiting.")
+        sys.exit()
+
+    # Update latlon_data with filtered data
+    latlon_data = {
+        'datetime': filtered_track_coords['datetime'].dt.strftime('%Y%m%d%H').tolist(),
+        'longitude': filtered_track_coords['longitude'].tolist(),
+        'latitude': filtered_track_coords['latitude'].tolist(),
+    }
+    logger.info(f"""latlon_data dates for samples in {latlonfile} : {latlon_data}, """)
+    latlon_data['tstep'] = time_diffs.iloc[0]
+
+    latlon_data['end_time'] = filtered_track_coords['datetime'].iloc[-1].hour
+
+    logger.info(f"Filtered data points to {len(filtered_track_coords)} entries on the hour.")
+    logger.info(f"Time differences after filtering: {time_diffs.tolist()}")
+    logger.info(f"End_time after filtering: {latlon_data['end_time']}")
+
+    return latlon_data
+
+
 def set_latlon_and_check(user_input):
 
     import pandas as pd
@@ -263,12 +362,7 @@ def set_latlon_and_check(user_input):
         logger.info(f"Latitude and Longitude to be read from file {user_input['scm']['latlonfile']}")
         scm_data_checks.paths(user_input["scm"]["latlonfile"], "Latitude and Longitude track file")
 
-        track_coords = pd.read_csv(user_input["scm"]["latlonfile"])
-
-        # Remove whitespace from the csv to prevent keyerror in assignment to the list
-        track_coords.columns = track_coords.columns.str.strip()
-
-        latlon_data = track_coords.to_dict("list")
+        latlon_data = latlon_track_check(user_input)
 
     else:
 
@@ -288,6 +382,7 @@ def set_latlon_and_check(user_input):
         latlon_data = {}
         latlon_data["latitude"] = []
         latlon_data["longitude"] = []
+        latlon_data['tstep'] = user_input['scm']['tstep']
 
         for ind, lat in enumerate(user_input["scm"]["lat"]):
             latlon_data["latitude"].append(lat)

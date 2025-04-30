@@ -6,6 +6,7 @@ import os
 import sys
 import textwrap
 import yaml
+from pathlib import Path
 
 import scm_input
 
@@ -59,7 +60,7 @@ if __name__ == "__main__":
 
     # Check if the namelist yaml file exists
     if args.config_file_nml is None:
-        args.config_file_nml = os.path.join(os.getcwd(), f"scm_setup_yaml/scm_nml_setup.yml")
+        args.config_file_nml = os.path.join(Path(__file__).resolve().parent, f"config/scm_nml_setup.yml")
 
     if not os.path.exists(args.config_file_nml):
         print(f"[WARNING]: Namelist config file {args.config_file_nml} does not exist!")
@@ -71,6 +72,11 @@ if __name__ == "__main__":
 
     # Execution time logger
     time_logger = TimeLogger()
+
+    # Make sure directory to output scm forcing data and the log file exists. 
+    # All other path checks are done in the check_switches_and_paths function
+    if not os.path.isdir(user_config["scm_forcing_datadir"]) :
+        os.makedirs(user_config["scm_forcing_datadir"], exist_ok=True)
 
     # Setup logging
     setup_logging(user_config["scm_forcing_logfile"], user_config["log_level"])

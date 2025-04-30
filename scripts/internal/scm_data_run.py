@@ -61,7 +61,7 @@ def create_nml(getini1c_datadir, scm_dict, latlon_data, ctrl_dict, date_time_lis
 
     if scm_dict["extract_scm_track"]:
         logger.info(
-            f"""Latitude and Longitude change in time (read from {scm_dict['latlon_file']})) 
+            f"""Latitude and Longitude change in time (read from {scm_dict['latlonfile']})) 
                     getini1c namelist produced for each date in track"""
         )
 
