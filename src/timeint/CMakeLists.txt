@@ -20,7 +20,7 @@ if( HAVE_SCM_TOOLS )
                         interface/
 
                 DEFINITIONS
-                        ${PLUGINS_DEFINITIONS}
+                        ${SCM_TOOLS_DEFINITIONS}
                 LIBS
                         eckit_option
                         eccodes

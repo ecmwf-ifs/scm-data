@@ -57,22 +57,52 @@ if( ENABLE_NETCDF AND NOT HAVE_NETCDF )
 endif()
 
 
-ecbuild_add_option( FEATURE SCM_SINGLE_PRECISION
-                    DESCRIPTION "plume plugin in single precision"
-                    DEFAULT OFF )
-
-
+# enable the plume plugin
 ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     DESCRIPTION "plume plugin"
                     DEFAULT OFF
                     CONDITION ENABLE_ATLAS
                     REQUIRED_PACKAGES plume )
 
+# *** Both the SCM tools and the plume plugin can be built in Single Precision (SP) or Double Precision (DP): ***
+# -DENABLE_SINGLE_PRECISION=ON               : builds the tools and the plume plugin in SP (or DP if OFF)
+# -DENABLE_PLUME_PLUGINS_SINGLE_PRECISION=ON : option used to build the plume plugin in single precision
+# -DENABLE_PLUME_PLUGINS_DOUBLE_PRECISION=ON : option used to build the plume plugin in double precision
+# ***************************************************************************************************************
+ecbuild_add_option( FEATURE SINGLE_PRECISION
+                    DESCRIPTION "SCM tools and plugin in single precision"
+                    DEFAULT OFF )
 
-if( HAVE_SCM_SINGLE_PRECISION ) 
-  list(APPEND PLUGINS_DEFINITIONS WITH_SCM_SINGLE_PRECISION )
+ecbuild_add_option( FEATURE PLUME_PLUGINS_SINGLE_PRECISION
+                    DESCRIPTION
+                    "Compile plugin for single precision fields"
+                    DEFAULT OFF)
+
+ecbuild_add_option( FEATURE PLUME_PLUGINS_DOUBLE_PRECISION
+                    DESCRIPTION
+                    "Compile plugin for double precision fields"
+                    DEFAULT ON)
+
+# Definitions used for tools
+if( HAVE_SINGLE_PRECISION )
+  list(APPEND SCM_TOOLS_DEFINITIONS WITH_SCM_SINGLE_PRECISION )
 endif()
 
+# Definitions used for plugin
+set( HAVE_SCM_PLUGIN_sp 0)
+set( HAVE_SCM_PLUGIN_dp 0)
+
+if (HAVE_SINGLE_PRECISION OR HAVE_PLUME_PLUGINS_SINGLE_PRECISION)
+  set( PLUGINS_DEFINITIONS_sp WITH_SCM_SINGLE_PRECISION )
+  set( HAVE_SCM_PLUGIN_sp 1)
+endif()
+
+if (HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
+  set( PLUGINS_DEFINITIONS_dp WITH_SCM_DOUBLE_PRECISION )
+  set( HAVE_SCM_PLUGIN_dp 1)
+else()
+  set( HAVE_SCM_PLUGIN_dp 0)
+endif()
 
 ############################################################################################
 # build executables

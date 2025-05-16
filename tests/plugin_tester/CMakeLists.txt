@@ -35,9 +35,6 @@ ecbuild_add_executable(
         ../../src/ncdf_varwrite1c.F90
         ../../src/read_grib_scm.F90
 
-    DEFINITIONS
-        ${PLUGINS_DEFINITIONS}
-
     INCLUDES
         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
@@ -54,4 +51,9 @@ ecbuild_add_executable(
         fckit
         plume_f
         NetCDF::NetCDF_Fortran
+)
+
+# Set the Fortran module directory for scm_compare
+set_target_properties(scm_plugin_tester
+    PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/scm_plugin_tester_mods_dir
 )
