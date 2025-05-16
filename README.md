@@ -60,9 +60,10 @@ Build the bundle. Optionally specify build-type and build-dir if default is not 
 ```
 NOTE: for building the bundle in the ECMWF HPC system, an ecbuild configuration file (that loads the necessary system modules) is also provided. To use it, simply add the `--arch` option:
 ```
-./scm-data-bundle build --build-type=<Release|Debug|RelWithDebInfo> --build-dir=<build-dir> --arch arch/ecmwf/hpc2020/intel
+./scm-data-bundle build -j8 --build-type=<Release|Debug|RelWithDebInfo> --build-dir=<build-dir> --arch arch/ecmwf/hpc2020/intel
 ```
-Other building options to can be queried via:
+The example command above builds the bundle with 8 processors (option -j8). If more processors are needed, consider using an interactive session 
+('ecinteractive' command in the ECMWF HPC system) or 'srun'. Other building options can be queried via:
 ```
 ./scm-data-bundle build --help
 ```

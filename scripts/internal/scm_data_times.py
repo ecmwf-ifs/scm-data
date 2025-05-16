@@ -6,7 +6,6 @@ import time
 import logging
 from contextlib import contextmanager
 
-
 @contextmanager
 def log_execution_time(key, execution_time_dict):
     # Testing a context manager to log the execution time of a block of code.
@@ -18,144 +17,83 @@ def log_execution_time(key, execution_time_dict):
     yield
     execution_time_dict[key] = time.time() - start_time
 
-
-def datetime_derivation(user_start_date, user_end_date, user_tstep, message_id):
+def datetime_derivation(user_start_date, user_end_date, user_tstep, message_id) :
+    
+    # This function creates a dictionary of dates and times for the SCM forcing data
+    #
+    # The dates are in the format YYYYMMDD, the times are in the format HH:MM:SS
+    # The function takes the following arguments:
+    #   user_start_date : start date in the format YYYYMMDD
+    #   user_end_date : end date in the format YYYYMMDD
+    #   user_tstep : time step in seconds
+    #   user_start_time : start time in the format HH:MM:SS
+    #   message_id : a string to identify the message in the log file
+    # 
+    # The function returns a dictionary with the following keys:
+    #   'dates' : a list of dates in the format YYYYMMDD
+    #   'times_for_mars' : a list of times in the format HH:MM:SS
+    #   'times_for_each_day' : a list of times in the format HH:MM:SS
+    #   'datetime_fn_suffix' : a list of date and time strings in the format YYYYMMDD_HHMM
+    #
+    # Note: 
+    #   this function is run for all requests to understand the user input for dates and times. 
+    #   If a feature track is used dictionary outputs will be checked and possibly modified by the 
+    #   feature_track function.
 
     logger = logging.getLogger(__name__)
 
-    datetime_dict = {}
-
-    datetime_dict["dates"] = []
-    datetime_dict["times_for_mars"] = []
-    datetime_dict["times_for_each_day"] = []
-    datetime_dict["datetime_fn_suffix"] = []
-
-    date_format = "%Y%m%d"
-    time_format = "%H:%M:%S"
-
-    start_date = datetime.datetime.strptime(user_start_date, date_format)
-    end_date = datetime.datetime.strptime(user_end_date, date_format)
-    timestep_seconds = user_tstep
-
-    timestep_hours = timestep_seconds / 3600.0
-
-    # set current date object that is incremented by day
-    current_date = start_date
-    # write times in a day to datetime dict. We initially, assume the start time is
-    # 00, so that all days get a full day with the defined timestep. If openifs then
-    # trim date and start depending on user input
-    init_time = "00"
-
-    while current_date <= end_date:
-        # Write dates to datetime_dict up to user defined end date,
-        # using date format YY-MM-DD (used in mars request)
-        #
-        date_key = current_date.strftime("%Y%m%d")
-        datetime_dict["dates"].append(date_key)
-        #
-        # Set index counter for looping over time
-        t = int(init_time)
-        #
-        # Set current_date_time object, which is incremented by time
-        current_date_time = current_date
-
-        while t < 24:
-            #  with each time for a date. The date format is YYYYMMDD, time format is
-            # HH:MM:SS
-
-            if current_date == start_date:
-                # Create list of times for one day, this is needed for the mars request...
-                datetime_dict["times_for_mars"].append(current_date_time.strftime(time_format))
-
-            # ...also store a list of times for each day. Having 2 lists is not elegant but it is
-            # functional for now
-            datetime_dict["times_for_each_day"].append(current_date_time.strftime(time_format))
-
-            # creates a list of date and time string, format is YYYYMMDD_HHMM. This acts as a file suffix for getini1c input
-            # Creating the list here is a convenience
-            datetime_dict["datetime_fn_suffix"].append(
-                current_date.strftime(date_format) + current_date_time.strftime("%H") + current_date_time.strftime("%M")
-            )
-
-            t += int(timestep_hours)
-
-            current_date_time += datetime.timedelta(hours=timestep_hours)
-
-        current_date += datetime.timedelta(days=1)
-
-    message_dict = {
-        "scm": "scm forcing",
-        "oifs": "oifs testcase source data",
+    datetime_dict = {
+        'dates': [],
+        'times_for_mars': [],
+        'times_for_each_day': [],
+        'datetime_fn_suffix': []
     }
 
+    date_format = "%Y%m%d%H"
+    time_format = "%H:%M:%S"
+    
+    start_datetime = datetime.datetime.strptime(user_start_date, date_format)
+    end_datetime = datetime.datetime.strptime(user_end_date, date_format)
+    timestep_seconds = user_tstep
+    timestep_hours = timestep_seconds / 3600.0
+
+    # Set current date object that is incremented by day
+    current_datetime = start_datetime
+
+    print(current_datetime)
+    while current_datetime <= end_datetime:
+        # Write dates to datetime_dict up to user-defined end date
+        date_key = current_datetime.strftime("%Y%m%d")
+        datetime_dict['dates'].append(date_key)
+
+        print(current_datetime, date_key)
+        # Extract time in the format HH:MM:SS
+        formatted_time = current_datetime.strftime(time_format)
+        datetime_dict['times_for_each_day'].append(formatted_time)        
+
+        # Output current_datetime in the format YYYYMMDDHHMM, which the required format for the rest of scripts
+        formatted_datetime = current_datetime.strftime("%Y%m%d%H%M")
+        datetime_dict['datetime_fn_suffix'].append(formatted_datetime)
+
+        current_datetime += datetime.timedelta(hours=timestep_hours)
+
+    # Generate times for the mars request, this needs to be for one whole day, using the user defined timestep
+    time_for_mars = []
+    mars_time = datetime.datetime.strptime("00:00:00", time_format)
+    end_of_day = datetime.datetime.strptime("23:59:59", time_format)
+
+    while mars_time <= end_of_day:
+        time_for_mars.append(mars_time.strftime(time_format))
+        print(mars_time.strftime(time_format))
+        mars_time += datetime.timedelta(hours=timestep_hours)
+
+    # # Add time_for_mars to the dictionary
+    datetime_dict['times_for_mars'] = time_for_mars
+
+
+    # Log the results
+    message_dict = {'scm': 'scm forcing', 'oifs': 'oifs testcase source data'}
     for key, list_values in datetime_dict.items():
-        logger.info(f"User defined {key} for {message_dict[message_id] }: {list_values}")
+        logger.info(f"User defined {key} for {message_dict[message_id]}: {list_values}")
 
     return datetime_dict
-
-
-def feature_track(latlonfile, date_time_list):
-
-    import csv
-
-    # function read file with date and time, latitude, longitude
-    # compares the read date and time to date_time to check if
-    # dates and times exist in date_time and then check
-    # if the track date_time have same tstep as output tstep.
-
-    # Open the feature tracking file - assumed to be csv, with
-    # format date_time, lat, lon
-
-    logger = logging.getLogger(__name__)
-
-    track_dates = []
-    date_time_tmp = []
-    lat = []
-    lon = []
-
-    logger.info(f"Read Latitude and Longitude from track file {latlonfile}")
-
-    with open(latlonfile, mode="r") as file:
-        latlonfile_read = csv.reader(file)
-
-        for row in latlonfile_read:
-            track_dates.append(row[0])
-
-    if len(track_dates) < len(date_time_list):
-        logger.error(
-            f"""Number of dates and times in feature track less than user defined/derived times
-                         This could be the result of coarser output timestep or a problem - EXITING"""
-        )
-        sys.exit()
-
-    # check for common dates to ensure there is overlap between track and the simulation
-    # output dates
-    common_dates = [date_time for date_time in track_dates if date_time in date_time_list]
-
-    if len(common_dates) > 0:
-        logger.info(
-            f"There are common dates between feature track in {latlonfile} and the simulation output - Continue."
-        )
-    else:
-        logger.error(
-            f"There are NO common dates between feature track in {latlonfile} and the simulation output - EXITING."
-        )
-        sys.exit()
-
-    with open(latlonfile, mode="r") as file:
-        latlonfile_read = csv.reader(file)
-
-        for row in latlonfile_read:
-            for ind, dt in enumerate(date_time_list):
-                if dt in row:
-                    date_time_tmp.append(dt)
-                    lat.append(row[1])
-                    lon.append(row[2])
-                    break
-
-    logger.info(f"Latitude list is : {lat}")
-    logger.info(f"Longitude list is : {lon}")
-
-    logger.info(f"DONE - Latitude and Longitude read from track file {latlonfile}")
-
-    return lat, lon

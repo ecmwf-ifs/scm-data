@@ -24,9 +24,9 @@ scm :
   extract_scm_track: False    # request the forcing for one column following a track, with lat and lon changing over time
   extract_scm_array: False    # request initial conditions/forcing for an array of single columns, each fixed in space 
   # dates and initial time requested for the SCM
-  datebeg: "20081101"         # Initial date required for scm forcing
-  dateend: "20081103"         # end date required for scm forcing
-  tstep: 10800.00             # timestep for SCM forcing files
+  datebeg: "2008110100"       # Initial date required for scm forcing
+  dateend: "2008110321"       # end date required for scm forcing
+  tstep: 3600.00              # timestep for SCM forcing files
   lat: ['-20.0' ]             # latitude in degrees
   lon: ['-80.0' ]             # longitude in degrees
   latlon_from_file: False     # test for presence of latlonfile, used to set latitude and longitude

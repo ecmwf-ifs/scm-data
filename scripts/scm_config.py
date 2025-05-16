@@ -19,6 +19,9 @@ class UserConfigBase:
 
     def __getitem__(self, key):
         return self.config[key]
+    
+    def __setitem__(self, key, value):
+        self.config[key] = value
 
     def __str__(self):
         return json.dumps(self.config, indent=4)
