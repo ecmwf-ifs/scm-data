@@ -48,7 +48,7 @@ private
 
 type(plume_manager) :: manager
 type(plume_protocol) :: offers
-type(plume_data) :: plume_data
+type(plume_data) :: data_from_plume
 
 ! Provider of fields for Plume
 type(grib_fields_provider) :: fld_provider
@@ -78,7 +78,7 @@ subroutine setup()
   call plume_check(plume_initialise())
   call plume_check(manager%initialise())
   call plume_check(offers%initialise())
-  call plume_check(plume_data%initialise())  
+  call plume_check(data_from_plume%initialise())  
 
   ! Setup the field provider
   call fld_provider%initialise()
@@ -91,7 +91,7 @@ subroutine setup()
 
   ! Offer Plume all available fields (through fields provider)
   do ifield=1,n_fields
-    write(msg,'(A,A)'), "offering: ", field_names(ifield); call log%info(msg)
+    write(msg,'(A,A)') "offering: ", field_names(ifield); call log%info(msg)
     call plume_check(offers%offer_atlas_field(field_names(ifield), "on-request", "") )
   enddo
 
@@ -331,14 +331,14 @@ subroutine run( return_code )
   ! --- At this point, we need to pass all the GRIB fields to the field provider, 
   ! --- which will construct the plume fields to be passed to the plugin     
   call fld_provider%setup(nlev, gridpoints, nodepoints, sfcfields, gpfields, gpfields_from_sp, windfield)
-  call fld_provider%provide_fields(plume_data)
+  call fld_provider%provide_fields(data_from_plume)
 
   ! Initialise parameter
-  call plume_check( plume_data%create_int("NSTEP", 999) )
+  call plume_check( data_from_plume%create_int("NSTEP", 999) )
 
 
   ! Feed plugins with the data
-  call plume_check(manager%feed_plugins(plume_data))
+  call plume_check(manager%feed_plugins(data_from_plume))
 
   ! run
   call plume_check(manager%run())

@@ -131,7 +131,7 @@ subroutine scm_setup(plugin_config, model_data)
   CHARACTER(LEN=10) :: FIELDNAME
 
   REAL(KIND=JPRB) :: ZDELTA
-  LOGICAL :: LAREA_INT
+  INTEGER :: LAREA_INT
   INTEGER :: LPROGNOSTIC_INT
   LOGICAL :: LSINGLE
   

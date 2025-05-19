@@ -65,7 +65,7 @@ function create_nodefield_from_field(field, nodepoints) result(field_nodes)
             inode=inode+1            
             do ilev = 1,nlev
                 if (values(ilev,inode) .gt. 1e10) then
-                    write(*,'(A,A,A,I0,A,I0,A,E)'), "from create_nodefield_from_field >>>>> field:", field%name(), ", inode:", inode, ", jnode:", jnode, ", val: ", values(ilev,inode)
+                    write(*,'(A,A,A,I0,A,I0,A,E)') "from create_nodefield_from_field >>>>> field:", field%name(), ", inode:", inode, ", jnode:", jnode, ", val: ", values(ilev,inode)
                 endif
                 nodedata(ilev,jnode) = values(ilev,inode)
             enddo
@@ -148,7 +148,7 @@ function create_nodefield_from_fields(name, fields, nodepoints) result(field_nod
                     call field_tmp%data(field_values)
 
                     if (field_values(ilev,inode) .gt. 1e10) then
-                        write(*,'(A,A,A,I0,A,I0,A,E)'), "from create_nodefield_from_field >>>>> field:", field_tmp%name(), ", inode:", inode, ", jnode:", jnode, ", ifield: ", ifield,  ", val: ", field_values(ilev,inode)
+                        write(*,'(A,A,A,I0,A,I0,A,E)') "from create_nodefield_from_field >>>>> field:", field_tmp%name(), ", inode:", inode, ", jnode:", jnode, ", ifield: ", ifield,  ", val: ", field_values(ilev,inode)
                     endif
                     nodedata(ifield, ilev, jnode) = field_values(ilev, inode)
                 enddo
