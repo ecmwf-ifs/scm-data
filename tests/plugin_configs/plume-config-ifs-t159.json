@@ -6,6 +6,7 @@
             "core-config": {
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
+                "RUN_EVERY": 1,
                 "DATAID": "valid_t159_2015",
                 "DELTA" : 0.75,
                 "points": [
