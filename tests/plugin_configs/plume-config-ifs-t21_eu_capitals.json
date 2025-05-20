@@ -6,6 +6,7 @@
             "core-config": {
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
+                "RUN_EVERY": 1,
                 "DATAID": "data_ifs_eu_capitals",
                 "DELTA": 6,
                 "points": [

@@ -6,6 +6,7 @@
             "core-config": {
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
+                "RUN_EVERY": 1,
                 "DATAID": "data_ifs_test_tco1279", 
                 "DELTA" : 0.1,
                 "points": [

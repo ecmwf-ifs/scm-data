@@ -81,6 +81,7 @@ type(atlas_Field) :: field_uv ! field that contains 2 variables: U and V
 
 LOGICAL :: LPROGNOSTIC
 LOGICAL :: LAREA
+INTEGER :: RUN_EVERY
 
 TYPE(TLOCATION), ALLOCATABLE:: LOCATIONS(:)
 INTEGER(KIND=JPIM) :: NB_LOCATIONS
@@ -236,7 +237,13 @@ subroutine scm_setup(plugin_config, model_data)
     LAREA = .true.
   else
     LAREA = .false.
-  endif  
+  endif
+
+  ! Plugin run frequency
+  found = plugin_config%get("RUN_EVERY", RUN_EVERY)
+  if (.not.found) then
+    RUN_EVERY = 1
+  endif
 
   ! get other options from config file
   found = plugin_config%get("DATAID", DATAID) ! ID of data
@@ -410,7 +417,6 @@ subroutine scm_run( plugin_config, model_data )
 type(fckit_configuration) :: plugin_config
 type(plume_data) :: model_data
 
-type(atlas_Config) :: config
 type(atlas_Field) :: field
 
 type(atlas_FieldSet) :: sfcfields
@@ -470,8 +476,14 @@ character(len=:), allocatable :: nc_fullpath
 #include "wrt1c_nc.h"
 #include "create_nodefield.h"
 
-
 call plume_check(model_data%get_int("NSTEP",NSTEP))
+
+! Run the plugin only at every RUN_EVERY steps
+if (MOD(NSTEP, RUN_EVERY) /= 0) then
+  return
+endif
+
+call log%info("SCM-PLUGIN executing step..")
 
 if (.not.larea) then
   !$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(iloc)
@@ -551,8 +563,7 @@ do iloc=1, nb_locations
   endif
 enddo
 
-! finalisation
-call config%final()
+call log%info("SCM-PLUGIN step completed !")
 
 end subroutine scm_run
 
