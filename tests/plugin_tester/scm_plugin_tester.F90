@@ -88,6 +88,9 @@ subroutine setup()
 
   ! offer simulation step
   call plume_check(offers%offer_int("NSTEP", "always", "none"))
+  call plume_check(offers%offer_double("TSTEP", "always", "none"))
+  call plume_check(offers%offer_int("INIT_DATE", "always", "none"))
+  call plume_check(offers%offer_int("INIT_TIME", "always", "none"))
 
   ! Offer Plume all available fields (through fields provider)
   do ifield=1,n_fields
@@ -166,7 +169,12 @@ subroutine run( return_code )
   INTEGER :: LPROGNOSTIC_INT
 
   INTEGER(KIND=JPIM) :: nsmax
+  
   INTEGER(KIND=JPIM) :: nstep
+  REAL(KIND=c_double) :: tstep
+  INTEGER(KIND=JPIM) :: init_date
+  INTEGER(KIND=JPIM) :: init_time
+
   INTEGER(KIND=JPIM) :: I
   INTEGER(KIND=JPIM) :: J
   INTEGER(KIND=JPIM) :: jfld
@@ -336,6 +344,18 @@ subroutine run( return_code )
   ! Initialise parameter
   call plume_check( data_from_plume%create_int("NSTEP", 999) )
 
+  ! dummy values for TSTEP/INIT_DATE/INIT_TIME (for testing only)
+  tstep = 0.0
+  init_date = 20151015
+  init_time = 12
+  call plume_check(data_from_plume%provide_double("TSTEP", tstep))
+  call plume_check(data_from_plume%provide_int("INIT_DATE", init_date))
+  call plume_check(data_from_plume%provide_int("INIT_TIME", init_time))
+
+  INFO%IDATE = INIT_DATE
+  INFO%ITIME = INIT_TIME/3600 ! convert seconds to hours
+  INFO%ISTEP = NSTEP*TSTEP/3600 ! convert seconds to hours
+  INFO%NSTEP = NSTEP*TSTEP/3600 ! convert seconds to hours
 
   ! Feed plugins with the data
   call plume_check(manager%feed_plugins(data_from_plume))
@@ -346,11 +366,6 @@ subroutine run( return_code )
   ! *** this writes the netcdf files as in the original workflow
   call lonlatField%data(lonlat)
   call ghostField%data(ghost)
-
-  write(*,*) "INFO%IDATE: ", INFO%IDATE
-  write(*,*) "INFO%ITIME: ", INFO%ITIME
-  write(*,*) "INFO%ISTEP: ", INFO%ISTEP
-  write(*,*) "INFO%NSTEP: ", INFO%NSTEP
 
   ! call fill_and_write(INFO, &
   !                     LOCATIONS, &

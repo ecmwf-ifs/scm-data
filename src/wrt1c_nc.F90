@@ -152,10 +152,16 @@ zmoist_st = zdry_st + rlvtt * ILOCATION%PP%pq(1:klev)
 
 !call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', INFO%ITIME)
 ! this is a provided counter in hours or the step in hours from the grib-file 
-if ( INFO%NSTEP /= 0 ) then
-  call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', REAL(INFO%NSTEP*3600,JPRB))
+
+! if the time is from the scm plugin, read it from INFO%DTIME
+if ( INFO%LCALC_PLUGIN) then
+  call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', REAL(INFO%DTIME,JPRB))
 else
-  call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', REAL(INFO%ISTEP*3600,JPRB))
+  if ( INFO%NSTEP /= 0 ) then
+    call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', REAL(INFO%NSTEP*3600,JPRB))
+  else
+    call ncdf_varwrite1c (incid, 1, istart1,icount1, 'time', REAL(INFO%ISTEP*3600,JPRB))
+  endif
 endif
 
 istatus = NF_INQ_VARID   (incid, 'date', ivarid)

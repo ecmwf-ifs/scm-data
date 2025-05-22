@@ -207,13 +207,18 @@ module grib_fields_provider_mod
 
 
         ! Create the GP fields from SP (and fill them in with value in the corresponding fieldset)
-        ! write(*,*) "************** n_fields_spc: ", n_fields_spc
         do ifield=1,n_fields_spc
             
             field_param_id = param_name2id(trim(field_names_spc(ifield)))
             ! write(*,*) "CREATING FIELD: ", trim(field_names_spc(ifield)), " ==>> PARAM-ID: ", field_param_id
 
-            tmp_field = nodepoints%create_field(name=trim(field_names_spc(ifield)), kind=atlas_real(jprb), type="scalar", levels=nlev)
+            ! geopotential and lnsp need a single level field
+            if (field_param_id == 152 .or. field_param_id == 129) then
+                tmp_field = nodepoints%create_field(name=trim(field_names_spc(ifield)), kind=atlas_real(jprb), type="scalar", levels=1)
+            else
+                tmp_field = nodepoints%create_field(name=trim(field_names_spc(ifield)), kind=atlas_real(jprb), type="scalar", levels=nlev)
+            endif
+
             call tmp_field%data(values)
 
             ! loop over the fieldset (NOT very efficient, for testing only!)
@@ -226,15 +231,12 @@ module grib_fields_provider_mod
                 call metadata%get('paramId',iparam)
                 call metadata%get('level',ilvl)
 
-                ! write(*,*) " ----> iparam: ", iparam, " ----> lvl: ", ilvl
-
                 if (iparam == field_param_id ) then
                     call tmp_field_single_level%data(values_single_level)
                     ! write(*,*) "size(values,1): ", size(values,1)
                     ! write(*,*) "size(values,2): ", size(values,2)
                     ! write(*,*) "size(values_single_level,1): ", size(values_single_level,1)
-
-                    if (iparam == 129) then ! special case for Z values that are defined at level=0?
+                    if (iparam == 152 .or. iparam == 129) then
                         values(1,:) = values_single_level
                     else
                         values(ilvl,:) = values_single_level
