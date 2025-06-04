@@ -180,6 +180,7 @@ subroutine scm_setup(plugin_config, model_data)
 
 
 #include "nearest_distance.h"
+#include "nearest_distance_kdtree.h"
 
   write(msg,'(A)')  "--> getini1c: start"; call log%debug(msg)
 
@@ -277,6 +278,8 @@ subroutine scm_setup(plugin_config, model_data)
 
     locations(ipoint)%RLONI = PT_LON
     locations(ipoint)%RLATI = PT_LAT
+    locations(ipoint)%RLONI_USER = PT_LON
+    locations(ipoint)%RLATI_USER = PT_LAT
     locations(ipoint)%ILOC = -1
     locations(ipoint)%IFILE_ID = -1
     locations(ipoint)%IPROC = -1
@@ -321,7 +324,8 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0,A,I0)') "nodes: ", nb_nodes, ", lonlat%size(): ", lonlatField%size(); call log%info(msg)
 
   ! find the nearest grid point to each user specified lat/lon location
-  call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+  ! call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+  call nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
 
   do j=1, nb_locations
     write(msg,'(A,I0)') "iproc: ", locations(j)%iproc ; call log%info(msg)

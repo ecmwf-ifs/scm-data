@@ -122,6 +122,8 @@ do j=1, nb_locations
   endif
   locations(j)%RLONI = zlon(j)
   locations(j)%RLATI = zlat(j)
+  locations(j)%RLONI_USER = zlon(j)
+  locations(j)%RLATI_USER = zlat(j)
   locations(j)%ILOC = -1
   locations(j)%IFILE_ID = -1
   locations(j)%IPROC = -1
