@@ -72,7 +72,7 @@ projects :
         require : eckit fckit atlas
 
     - scm-data :
-        git     : https://github.com/ecmwf/scm-data
+        git     : https://github.com/ecmwf-ifs/scm-data
         version : develop
         require : eccodes fiat ectrans atlas
 
