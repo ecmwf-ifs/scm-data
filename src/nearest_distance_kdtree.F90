@@ -107,8 +107,6 @@ do iloc=1, nb_locations
   locations(iloc)%rloni = lonlat(1,nearest_idx)
   locations(iloc)%rlati = lonlat(2,nearest_idx)
 
-  write(0,'(A,I0,A,I0,A,F6.2,A,F6.2,A,I0,A,F15.2,A,I0)') "P:",mpi_rank,", iloc: ", iloc,", [lon:", locations(iloc)%rloni_user, ", lat:", locations(iloc)%rlati_user, "], nearest_idx: ", nearest_idx, ", dist:", dist, " min_P: ", nearest_idx_rank
-
 enddo
 
 call kdtree%final()
