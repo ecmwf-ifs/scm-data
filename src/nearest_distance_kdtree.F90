@@ -41,12 +41,19 @@ type(fckit_mpi_comm) :: mpi_comm
 integer :: mpi_size
 integer :: mpi_rank
 real(c_double) :: dist
-integer :: min_rank_step
 integer(jpim) :: nb_non_ghost_nodes
 
 real(c_double), allocatable :: nearest_dist_allpts_local(:)
-real(c_double), allocatable :: nearest_dist_allpts_gathered(:)
-CHARACTER*512 msg
+real(c_double), allocatable :: nearest_dist_batchpts_local(:)
+real(c_double), allocatable :: nearest_dist_batchpts_gathered(:)
+integer :: nb_batches
+integer :: ibatch
+integer :: loc_index
+integer :: batch_size
+integer :: min_pidx_in_batch
+integer :: max_pidx_in_batch
+integer :: nb_batch_points
+integer :: min_rank_for_batch_point
 
 
 ! MPI information
@@ -90,9 +97,9 @@ end do
 ! Build the KDTree
 call kdtree%build()
 
-! Find the closest points for each location
+
+! Find the closest (local) point for each location
 allocate(nearest_dist_allpts_local(nb_locations))
-allocate(nearest_dist_allpts_gathered(mpi_size*nb_locations))
 do iloc=1, nb_locations
   plonlat(1) = locations(iloc)%rloni_user
   plonlat(2) = locations(iloc)%rlati_user
@@ -106,23 +113,38 @@ do iloc=1, nb_locations
   locations(iloc)%rlati = lonlat(2,nearest_idx)
 enddo
 
-! Gather all distances across processors
-call mpi_comm%allgather(nearest_dist_allpts_local, nearest_dist_allpts_gathered, nb_locations)
 
-! check min distance across all gathered distances
-do iloc=1, nb_locations
-  min_rank_step = minloc( nearest_dist_allpts_gathered(iloc:mpi_size*nb_locations:nb_locations),1 )
-  locations(iloc)%iproc = min_rank_step
+! Split the locations in batches
+batch_size = 100
+nb_batches = nb_locations / batch_size
+if (mod(nb_locations, batch_size) /= 0) then
+  nb_batches = nb_batches + 1
+endif
+
+! gather in batches
+allocate(nearest_dist_batchpts_local(batch_size))
+allocate(nearest_dist_batchpts_gathered(mpi_size*batch_size))
+
+loc_index = 1
+do ibatch=1,nb_batches
+
+  min_pidx_in_batch = loc_index
+  max_pidx_in_batch = min(min_pidx_in_batch+batch_size, nb_locations)
+  nb_batch_points = max_pidx_in_batch - min_pidx_in_batch + 1
+  nearest_dist_batchpts_local(1:nb_batch_points) = nearest_dist_allpts_local(min_pidx_in_batch:max_pidx_in_batch)
+
+  ! all gather the distances for this batch
+  call mpi_comm%allgather(nearest_dist_batchpts_local, nearest_dist_batchpts_gathered, batch_size)
+
+  ! check min distance across all gathered distances
+  do iloc=1,nb_batch_points
+    min_rank_for_batch_point = minloc( nearest_dist_batchpts_gathered(iloc:mpi_size*batch_size:batch_size),1 )
+    locations(iloc)%iproc = min_rank_for_batch_point
+  enddo
+
+  loc_index = loc_index + batch_size
 enddo
-
-! ! print out the results
-! do iloc=1, nb_locations
-!   if (locations(iloc)%iproc == mpi_rank) then
-!     write(*,'(A,F8.4,A,F8.4,A,F8.4,A,F8.4,A)') "Closest point to (", &
-!       locations(iloc)%rlati_user, ",", locations(iloc)%rloni_user, ") --> (", &
-!       locations(iloc)%rlati, ",", locations(iloc)%rloni, ")"
-!   end if
-! enddo
+! ========================================================================
 
 call kdtree%final()
 call geometry%final()
