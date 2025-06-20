@@ -75,7 +75,7 @@ do jnode = 1,nb_non_ghost_nodes
 enddo
 
 ! Geometry and KDTree setup
-geometry = atlas_Geometry("Earth")
+geometry = atlas_Geometry("UnitSphere")
 kdtree = atlas_IndexKDTree(geometry)
 call kdtree%reserve(nb_non_ghost_nodes)
 
