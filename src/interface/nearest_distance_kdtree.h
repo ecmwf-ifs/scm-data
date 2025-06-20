@@ -10,12 +10,8 @@
 INTERFACE
 subroutine nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
 
-use, intrinsic :: iso_C_binding
-use atlas_module
-use fckit_c_interop_module
-use fckit_mpi_module
-
-use yomvar
+use, intrinsic :: iso_C_binding, only: c_int, c_double
+use yomvar, only: jpim, tlocation
 
 implicit none
 
@@ -24,28 +20,6 @@ integer(c_int), pointer, intent(in)  :: ghost(:)
 real(c_double), pointer,  intent(in) :: lonlat(:,:)
 integer(jpim), intent(in) :: nb_locations
 type(tlocation), intent(inout) :: locations(nb_locations)
-
-integer(jpim) :: jnode
-integer(jpim) :: iloc
-real(jprb) :: zlon
-real(jprb) :: zlat
-integer(atlas_kind_idx) :: nearest_idx
-
-type(atlas_geometry) :: geometry
-type(atlas_indexkdtree) :: kdtree
-real(c_double) :: plonlat(2)
-
-integer(atlas_kind_idx), allocatable :: tree_indices(:)
-real(c_double), allocatable :: tree_lonlats(:,:), tree_distances(:)
-
-type(fckit_mpi_comm) :: mpi_comm
-integer :: mpi_size
-integer :: mpi_rank
-real(c_double) :: dist
-real(c_double) :: nearest_dist
-real(c_double), allocatable :: nearest_dist_all(:)
-integer :: nearest_idx_rank
-integer(jpim) :: nb_non_ghost_nodes
 
 end subroutine nearest_distance_kdtree
 END INTERFACE

@@ -9,12 +9,11 @@
 
 subroutine nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
 
-use, intrinsic :: iso_C_binding
-use atlas_module
-use fckit_c_interop_module
-use fckit_mpi_module
+use, intrinsic :: iso_C_binding, only: c_int, c_double
+use atlas_module, only: atlas_Geometry, atlas_IndexKDTree, atlas_kind_idx
+use fckit_mpi_module, only: fckit_mpi_comm
 
-use yomvar
+use yomvar, only: jpim, jprb, tlocation
 
 implicit none
 
