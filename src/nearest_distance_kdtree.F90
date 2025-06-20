@@ -12,6 +12,7 @@ subroutine nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locati
 use, intrinsic :: iso_C_binding, only: c_int, c_double
 use atlas_module, only: atlas_Geometry, atlas_IndexKDTree, atlas_kind_idx
 use fckit_mpi_module, only: fckit_mpi_comm
+use fckit_log_module, only : log
 
 use yomvar, only: jpim, jprb, tlocation
 
@@ -34,20 +35,23 @@ type(atlas_indexkdtree) :: kdtree
 real(c_double) :: plonlat(2)
 
 integer(atlas_kind_idx), allocatable :: tree_indices(:)
-real(c_double), allocatable :: tree_lonlats(:,:), tree_distances(:)
+real(c_double), allocatable :: tree_lonlats(:,:)
 
 type(fckit_mpi_comm) :: mpi_comm
 integer :: mpi_size
 integer :: mpi_rank
 real(c_double) :: dist
-real(c_double) :: nearest_dist
-real(c_double), allocatable :: nearest_dist_all(:)
-integer :: nearest_idx_rank
+integer :: min_rank_step
 integer(jpim) :: nb_non_ghost_nodes
+
+real(c_double), allocatable :: nearest_dist_allpts_local(:)
+real(c_double), allocatable :: nearest_dist_allpts_gathered(:)
+CHARACTER*512 msg
+
 
 ! MPI information
 mpi_comm = fckit_mpi_comm()
-mpi_rank = mpi_comm%rank()
+mpi_rank = mpi_comm%rank()+1
 mpi_size = mpi_comm%size()
 
 ! count non ghost nodes
@@ -87,26 +91,38 @@ end do
 call kdtree%build()
 
 ! Find the closest points for each location
-allocate( nearest_dist_all( mpi_size ) )
+allocate(nearest_dist_allpts_local(nb_locations))
+allocate(nearest_dist_allpts_gathered(mpi_size*nb_locations))
 do iloc=1, nb_locations
   plonlat(1) = locations(iloc)%rloni_user
   plonlat(2) = locations(iloc)%rlati_user
   
   call kdtree%closestPoint(plonlat, nearest_idx, dist)
 
-  ! MPI reduction across processors
-  call mpi_comm%allgather(dist, nearest_dist_all)
+  nearest_dist_allpts_local(iloc) = dist
 
-  ! proc owning the nearest idx (1-based)
-  nearest_idx_rank = MINLOC(nearest_dist_all, 1)
-
-  ! fill in the location details
-  locations(iloc)%iproc = nearest_idx_rank
   locations(iloc)%iloc  = nearest_idx
   locations(iloc)%rloni = lonlat(1,nearest_idx)
   locations(iloc)%rlati = lonlat(2,nearest_idx)
-
 enddo
+
+! Gather all distances across processors
+call mpi_comm%allgather(nearest_dist_allpts_local, nearest_dist_allpts_gathered, nb_locations)
+
+! check min distance across all gathered distances
+do iloc=1, nb_locations
+  min_rank_step = minloc( nearest_dist_allpts_gathered(iloc:mpi_size*nb_locations:nb_locations),1 )
+  locations(iloc)%iproc = min_rank_step
+enddo
+
+! ! print out the results
+! do iloc=1, nb_locations
+!   if (locations(iloc)%iproc == mpi_rank) then
+!     write(*,'(A,F8.4,A,F8.4,A,F8.4,A,F8.4,A)') "Closest point to (", &
+!       locations(iloc)%rlati_user, ",", locations(iloc)%rloni_user, ") --> (", &
+!       locations(iloc)%rlati, ",", locations(iloc)%rloni, ")"
+!   end if
+! enddo
 
 call kdtree%final()
 call geometry%final()
