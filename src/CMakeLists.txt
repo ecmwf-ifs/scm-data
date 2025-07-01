@@ -14,6 +14,7 @@ if( HAVE_SCM_TOOLS )
                 module/yomvar.F90
                 rdnam.F90
                 nearest_distance.F90
+                nearest_distance_kdtree.F90
                 calcgeost.F90
                 fillvar.F90
                 compute_fields.F90

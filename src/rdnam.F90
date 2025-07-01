@@ -64,7 +64,7 @@ NSTEP=0
 NSMAX = -1
 CGRID = ' '
 ! distance from nearest
-DELTA=0.1
+DELTA=-999.
 LPROGNOSTIC=.TRUE.
 LAREA=.FALSE.
 DATAID='nocomments'

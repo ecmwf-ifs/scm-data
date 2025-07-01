@@ -154,6 +154,9 @@ subroutine scm_setup(plugin_config, model_data)
   integer :: ipoint
   logical :: found
 
+  ! if delta is not specified, use kdtree to find nearest point
+  logical :: found_delta
+
   type(atlas_functionspace_StructuredColumns) :: input_fs
   class(atlas_Functionspace), allocatable :: input_fs_parent
   type(atlas_grid) :: input_grid
@@ -180,6 +183,7 @@ subroutine scm_setup(plugin_config, model_data)
 
 
 #include "nearest_distance.h"
+#include "nearest_distance_kdtree.h"
 
   write(msg,'(A)')  "--> getini1c: start"; call log%debug(msg)
 
@@ -245,9 +249,11 @@ subroutine scm_setup(plugin_config, model_data)
     RUN_EVERY = 1
   endif
 
-  ! get other options from config file
-  found = plugin_config%get("DATAID", DATAID) ! ID of data
-  found = plugin_config%get("DELTA", ZDELTA)  ! max radius of search for nearest grid point
+  ! ID of data
+  found = plugin_config%get("DATAID", DATAID)
+
+  ! max radius of search for nearest grid point
+  found_delta = plugin_config%get("DELTA", ZDELTA)
 
   ! vertical levels coefficients
   ! For testing only: read the vertical levels from namelist (for consistency)
@@ -277,6 +283,8 @@ subroutine scm_setup(plugin_config, model_data)
 
     locations(ipoint)%RLONI = PT_LON
     locations(ipoint)%RLATI = PT_LAT
+    locations(ipoint)%RLONI_USER = PT_LON
+    locations(ipoint)%RLATI_USER = PT_LAT
     locations(ipoint)%ILOC = -1
     locations(ipoint)%IFILE_ID = -1
     locations(ipoint)%IPROC = -1
@@ -321,7 +329,13 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0,A,I0)') "nodes: ", nb_nodes, ", lonlat%size(): ", lonlatField%size(); call log%info(msg)
 
   ! find the nearest grid point to each user specified lat/lon location
-  call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+  if ( .not. found_delta ) then
+    write(msg,'(A)') "No ZDELTA specified, using kdtree to find nearest point"; call log%info(msg)
+    call nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
+  else
+    write(msg,'(A,F8.4)') "ZDELTA = ", zdelta; call log%info(msg)
+    call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+  endif
 
   do j=1, nb_locations
     write(msg,'(A,I0)') "iproc: ", locations(j)%iproc ; call log%info(msg)

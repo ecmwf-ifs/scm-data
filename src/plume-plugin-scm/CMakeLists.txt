@@ -110,6 +110,7 @@ foreach(prec sp dp)
                 ../calcgeost.F90
                 ../handle_err_nc.F90
                 ../nearest_distance.F90
+                ../nearest_distance_kdtree.F90
                 ../ncdf_varsetup1c.F90
                 ../ncdf_varwrite1c.F90
                 ../su_wrt_nc.F90

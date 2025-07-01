@@ -79,6 +79,7 @@ character (len=40) :: nc_filename
 
 #include "rdnam.h"
 #include "nearest_distance.h"
+#include "nearest_distance_kdtree.h"
 #include "read_grib_scm.h"
 #include "fillvar.h"
 #include "compute_fields.h"
@@ -122,6 +123,8 @@ do j=1, nb_locations
   endif
   locations(j)%RLONI = zlon(j)
   locations(j)%RLATI = zlat(j)
+  locations(j)%RLONI_USER = zlon(j)
+  locations(j)%RLATI_USER = zlat(j)
   locations(j)%ILOC = -1
   locations(j)%IFILE_ID = -1
   locations(j)%IPROC = -1
@@ -159,7 +162,17 @@ ghostField = nodes%ghost()
 call ghostField%data(ghost)
 write(msg,'(A,I0,1X, I0)') "ndes , lonlat%size", nb_nodes, lonlatField%size()/2; call log%info(msg)
 
-call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+! find the nearest grid point to each user specified lat/lon location
+
+! if zdelta is -999, it means it is not set, so we use the kdtree algorithm to find the nearest point
+if (zdelta .le. 0) then
+  write(msg,'(A)') "zdelta not set, using kdtree to find nearest points"; call log%info(msg)
+  call nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
+else
+  write(msg,'(A,F5.3)') "zdelta set to ", zdelta; call log%info(msg)
+  call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
+endif
+
 do j=1, nb_locations
   if( myproc == locations(j)%iproc ) then
     write(msg,'(A,I0)') "nearest point proc ", locations(j)%IPROC ; call log%info(msg)

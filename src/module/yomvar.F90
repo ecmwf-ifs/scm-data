@@ -62,11 +62,13 @@ end type TINFO
 type TLOCATION
 !  sequence
   REAL(KIND=JPRB) :: RLONI ! nearest location actually used in degrees
-   REAL(KIND=JPRB) :: RLATI ! nearest location actually used in degrees
-   INTEGER(KIND=JPIM) :: IPROC
-   INTEGER(KIND=JPIM) :: ILOC
-   INTEGER(KIND=JPIM) :: IFILE_ID
-   TYPE(TPARAM) :: PP
+  REAL(KIND=JPRB) :: RLATI ! nearest location actually used in degrees
+  REAL(KIND=JPRB) :: RLONI_USER ! user requested location in degrees
+  REAL(KIND=JPRB) :: RLATI_USER ! user requested location in degrees
+  INTEGER(KIND=JPIM) :: IPROC
+  INTEGER(KIND=JPIM) :: ILOC
+  INTEGER(KIND=JPIM) :: IFILE_ID
+  TYPE(TPARAM) :: PP
 end type TLOCATION
 
 CONTAINS
