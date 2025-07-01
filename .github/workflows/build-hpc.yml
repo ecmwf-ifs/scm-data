@@ -40,7 +40,6 @@ jobs:
         include:
           - name: hpc-intel-matrix
             site: ac-batch
-            bundle_arch: ecmwf/hpc2020/intel
             troika_user_secret: HPC_CI_SSH_USER
             sbatch_options: |
               #SBATCH --time=00:20:00
@@ -48,13 +47,15 @@ jobs:
               #SBATCH --cpus-per-task=16
               #SBATCH --mem=32G
               #SBATCH --qos=nf
+            bundle_build_options: --arch ecmwf/hpc2020/intel
 
 
     runs-on: [self-hosted, linux, hpc]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: ecmwf/reusable-workflows/ci-hpc-generic@v2
+      - name: Run
+        uses: ecmwf/reusable-workflows/ci-hpc-generic@v2
         with:
           site: ${{ matrix.site }}
           troika_user: ${{ secrets[matrix.troika_user_secret] }}
@@ -62,42 +63,50 @@ jobs:
           output_dir: ${{ matrix.output_dir || '' }}
           workdir: ${{ matrix.workdir || '' }}
           template_data: |
-            cmake_options:
-              - -DENABLE_MPI=ON
-              - ${{ matrix.cmake_options || '' }}
+            bundle_build_options: ${{ matrix.bundle_build_options || ''}}
             ctest_options: ${{ matrix.ctest_options || '' }}
-            bundle_arch: ${{ matrix.bundle_arch || '' }}
 
           template: |
 
             REPO=${{ github.event.pull_request.head.repo.full_name || github.repository }}
             SHA=${{ github.event.pull_request.head.sha || github.sha }}
+            { set +x; } 2>/dev/null # trace off
+
             name=$(basename $REPO)
 
             echo "::group::Checkout $name"
-            echo "+ mkdir -p $name"
+            { set -x; } 2>/dev/null # trace on
             mkdir -p $name
-            echo "+ pushd $name"
             pushd $name
-            echo "+ git init"
             git init
-            echo "+ git remote add origin git@github.com:$REPO"
             git remote add origin git@github.com:$REPO
-            echo "+ git fetch origin $SHA"
             git fetch origin $SHA
-            echo "+git reset --hard FETCH_HEAD"
             git reset --hard FETCH_HEAD
-            echo "+ popd"
             popd
+            { set +x; } 2>/dev/null # trace off
             echo "::endgroup::"
 
-            cd ${name}/bundle
-
-            # create the bundle
+            echo "::group::scm-data-bundle create"
+            { set -x; } 2>/dev/null # trace on
+            pushd ${name}/bundle
             ./scm-data-bundle create
+            popd
+            { set +x; } 2>/dev/null # trace off
+            echo "::endgroup::"
 
-            # build the bundle
-            ./scm-data-bundle build --build-dir build --arch {{ bundle_arch }} --with-scm-plume-plugin -j 16
+            echo "::group::scm-data-bundle build"
+            { set -x; } 2>/dev/null # trace on
+            pushd ${name}/bundle
+            ./scm-data-bundle build {{ bundle_build_options }} --with-scm-plume-plugin -j 32
+            popd
+            { set +x; } 2>/dev/null # trace off
+            echo "::endgroup::"
 
-            # test scm-data
-            ctest --test-dir ./build/scm-data --output-on-failure
+            echo "::group::Test"
+            { set -x; } 2>/dev/null # trace on
+            pushd ${name}/bundle/build
+            source env.sh
+            ctest --test-dir ./scm-data --output-on-failure {{ ctest_options }}
+            popd
+            { set +x; } 2>/dev/null # trace off
+            echo "::endgroup::"
