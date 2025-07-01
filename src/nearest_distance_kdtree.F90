@@ -39,7 +39,6 @@ real(c_double), allocatable :: tree_lonlats(:,:)
 
 type(fckit_mpi_comm) :: mpi_comm
 integer :: mpi_size
-integer :: mpi_rank
 real(c_double) :: dist
 integer(jpim) :: nb_non_ghost_nodes
 
@@ -58,7 +57,6 @@ integer :: min_rank_for_batch_point
 
 ! MPI information
 mpi_comm = fckit_mpi_comm()
-mpi_rank = mpi_comm%rank()+1
 mpi_size = mpi_comm%size()
 
 ! count non ghost nodes
