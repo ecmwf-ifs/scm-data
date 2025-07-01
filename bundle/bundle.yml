@@ -104,8 +104,16 @@ options :
 
     - with-scm-plume-plugin-single-precision :
         help  : Build the scm-data plume plugin with single precision
-        cmake : ENABLE_SINGLE_PRECISION=ON
+        cmake : ENABLE_PLUME_PLUGINS_SINGLE_PRECISION=ON
 
     - without-scm-plume-plugin-single-precision :
         help  : Do not build the scm-data plume plugin with single precision
-        cmake : ENABLE_SINGLE_PRECISION=OFF
+        cmake : ENABLE_PLUME_PLUGINS_SINGLE_PRECISION=OFF
+
+    - with-scm-plume-plugin-double-precision :
+        help  : Build the scm-data plume plugin with single precision
+        cmake : ENABLE_PLUME_PLUGINS_DOUBLE_PRECISION=ON
+
+    - without-scm-plume-plugin-double-precision :
+        help  : Do not build the scm-data plume plugin with single precision
+        cmake : ENABLE_PLUME_PLUGINS_DOUBLE_PRECISION=OFF

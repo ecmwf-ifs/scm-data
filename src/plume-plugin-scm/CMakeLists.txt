@@ -21,6 +21,9 @@ plume_plugin_interface(
         "undefined"
     PLUGIN_REQUIRED_PARAMS
         "NSTEP:INT"
+        "TSTEP:DOUBLE"
+        "INIT_DATE:INT"
+        "INIT_TIME:INT"
         "stl1:ATLAS_FIELD"
         "stl2:ATLAS_FIELD"
         "stl3:ATLAS_FIELD"

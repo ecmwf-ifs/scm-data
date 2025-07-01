@@ -68,7 +68,7 @@ INTEGER(KIND=JPIM) :: iloc
 
 type(atlas_Nabla) :: nabla
 type(atlas_Field) :: grad
-type(atlas_Field) :: grad_lnsp ! special case (1 lvl only)
+type(atlas_Field) :: grad_one_lev ! special case (1 lvl only)
 type(atlas_Field) :: gradu
 type(atlas_Field) :: gradv
 type(atlas_Field) :: wind_u
@@ -123,7 +123,7 @@ REAL(KIND=JPRB)    :: zzaux
 REAL(KIND=JPRB)    :: zdir
 REAL(KIND=JPRB)    :: zpi
 
-CHARACTER*127 msg
+CHARACTER*512 msg
 type(fckit_mpi_comm) :: mpi_comm
 
 TYPE(TPARAM), POINTER :: PX
@@ -153,7 +153,7 @@ call windfield%data(wind)
 
 
 grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
-grad_lnsp = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=1, variables=2)
+grad_one_lev = nodepoints%create_field(name="grad_one_lev", kind=atlas_real(JPRB),levels=1, variables=2)
 
 ! scalar gp from sp
 isize = gpfields_from_sp%size()
@@ -170,40 +170,28 @@ do jfld=1,isize
   iparam = param_name2id(field%name())
 
   ! derivatives
-  if ( iparam == 129 .or. iparam == 130 ) then
+  if ( iparam == 130 ) then
     call nodepoints%halo_exchange(field)
     call nabla%gradient(field,grad)
     call grad%data(grad_data)
   endif
 
-  if ( iparam == 152) then
-    ! NB: from plume, this field has only one level, 
-    ! while from the plugin tester, this has klev levels
-
-    ! write(*,*) "calculating grad_lnsp"
-    ! write(*,*) " --- field%shape(): ", field%shape()
-    ! write(*,*) " --- grad_lnsp%shape(): ", grad_lnsp%shape()
-    ! write(*,*) " --- field%levels(): ", field%levels()
-    ! write(*,*) " --- grad_lnsp%levels(): ", grad_lnsp%levels()
+  ! special case for sp and geopotential
+  if ( iparam == 152 .or. iparam == 129) then
 
     call nodepoints%halo_exchange(field)
 
     if ( field%levels() == 1 ) then
-      call nabla%gradient(field,grad_lnsp)
-      call grad_lnsp%data(grad_data)
+      call nabla%gradient(field,grad_one_lev)
+      call grad_one_lev%data(grad_data)
     else
-      call nabla%gradient(field,grad)
-      call grad%data(grad_data)
+      write(msg,'(A,A,A)') " ERROR: field ", field%name(), " has more than 1 level, but should have only 1 level!" ; call log%error(msg)
     endif
-      
-    ! call nabla%gradient(field,grad)
-    ! ! write(*,*) " --- nabla gradient calculated "
-    ! call grad%data(grad_data)
     ! write(*,*) "--- size(grad_data,1): ", size(grad_data,1)
     ! write(*,*) "--- size(grad_data,2): ", size(grad_data,2)
     ! write(*,*) "--- size(grad_data,3): ", size(grad_data,3)
   endif
-  
+
   ! fill values
   do iloc=1, nb_locations
     do ilev=1,n_field_levels
@@ -255,7 +243,6 @@ do jfld=1,isize
 
   ! derivatives
   if ( iparam == 133 .or. iparam ==  75 .or. iparam == 76 .or. iparam == 246 .or. iparam == 247 .or. iparam == 248 ) then
-    ! write(*,*) "calculating NABLA for param ", iparam
     call nodepoints%halo_exchange(field)
     call nabla%gradient(field, grad)    
     call grad%data(grad_data)

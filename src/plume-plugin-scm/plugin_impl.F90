@@ -98,6 +98,10 @@ REAL(KIND=JPRB), ALLOCATABLE :: ZLAT(:) ! point lats
 REAL(KIND=JPRB), ALLOCATABLE :: ZLON(:) ! point lons
 
 INTEGER(KIND=JPIM) :: nstep
+REAL(KIND=c_double) :: tstep
+INTEGER(KIND=JPIM) :: init_date
+INTEGER(KIND=JPIM) :: init_time
+
 INTEGER(KIND=JPIM) :: NLEV
 INTEGER(KIND=JPIM) :: NB_NODES
 
@@ -223,6 +227,9 @@ subroutine scm_setup(plugin_config, model_data)
 
 
   call plume_check(model_data%get_int("NSTEP",NSTEP))
+  call plume_check(model_data%get_double("TSTEP",TSTEP))
+  call plume_check(model_data%get_int("INIT_DATE",INIT_DATE))
+  call plume_check(model_data%get_int("INIT_TIME",INIT_TIME))
 
   ! get the functionspace from first field
   input_fs = fields_srf(1)%functionspace()
@@ -491,6 +498,18 @@ character(len=:), allocatable :: nc_fullpath
 #include "create_nodefield.h"
 
 call plume_check(model_data%get_int("NSTEP",NSTEP))
+call plume_check(model_data%get_double("TSTEP",TSTEP))
+call plume_check(model_data%get_int("INIT_DATE",INIT_DATE))
+call plume_check(model_data%get_int("INIT_TIME",INIT_TIME))
+
+! write some info to the INIT_DATE and INIT_TIME
+INFO%IDATE = INIT_DATE
+INFO%ITIME = INIT_TIME/3600 ! convert seconds to hours
+INFO%LCALC_PLUGIN = .true. ! times are from plugin
+INFO%DTIME = NSTEP * TSTEP ! time step in seconds
+
+! use double precision for the time step from plugin..
+
 
 ! Run the plugin only at every RUN_EVERY steps
 if (MOD(NSTEP, RUN_EVERY) /= 0) then

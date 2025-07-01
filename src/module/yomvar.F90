@@ -57,6 +57,8 @@ type TINFO
   INTEGER(KIND=JPIM) :: ITIME
   INTEGER(KIND=JPIM) :: ISTEP ! in hours
   INTEGER(KIND=JPIM) :: NSTEP ! index in hours (not from grib-file)
+  REAL(KIND=JPRD)    :: DTIME ! time (real) in seconds
+  LOGICAL            :: LCALC_PLUGIN = .false. ! true if times are from plugin
 end type TINFO
 
 type TLOCATION
