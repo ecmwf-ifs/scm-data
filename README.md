@@ -109,12 +109,19 @@ To install all the necessary python packages, execute:
 ```
 source <scm-data-directory>/scripts/env.sh
 ```
-this creates a python virtual env called *scm_env* in a directory $(pwd)/envs. The first time the script *env.sh* is executed, it will take a few minutes to install all the necessary python packages. Subsequent invocations of the script will only source the environment, and the execution time should be reduced to seconds (Note: on the ECMWF HPC system, the env.sh can be invoked as `source env.sh ec-hpc2020` and the script will only load the necessary system modules, without creating the virtual environment).
+this creates a python virtual env called *scm_env* in a directory $(pwd)/envs. The first time the script *env.sh* is executed, it will take a few minutes to install all the necessary python packages. Subsequent invocations of the script will only source the environment, and the execution time should be reduced to seconds (Note: on the ECMWF HPC system, the env.sh can be invoked as `source <scm-data-directory>/scripts/env.sh ec-hpc2020` and the script will only load the necessary system modules, without creating the virtual environment).
 
 ### Retrieve and pre-process data
-The programs can be run by executing the following commands:
+The program can be run by executing the following commands:
+
+Source the environment file (if not already done).
 ```
-source $(pwd)/envs/scm_env/bin/activate
+source <scm-data-directory>/scripts/env.sh
+```
+(Note: similarly to the installation step, in the ECMWF HPC system, this command should be invoked as `source <scm-data-directory>/scripts/env.sh ec-hpc2020`, to only load the necessary system modules).
+
+Then run the `run_scm_data.py` script:
+```
 python3 scripts/run_scm_data.py <scm-data-configuration-file>
 ```
 optionally a namelist setup file can also be specified with the -n option (otherwise the default file *config/scm_nml_setup.yml* will be used).
