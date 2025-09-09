@@ -55,6 +55,10 @@ module plugin_impl_mod
 
   use plugin_utils_mod, only : param_name2idx, get_vertical_tables_from_namelist
 
+#ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
+  use plugin_profiler_mod
+#endif
+
 implicit none
 
 
@@ -64,7 +68,9 @@ private
 ! vectors of fields
 type(atlas_Field) :: fields_srf(n_fields_srf)
 type(atlas_Field) :: fields_cld(n_fields_cld)
+type(atlas_Field) :: fields_cld_nodes(n_fields_cld)
 type(atlas_Field) :: fields_spc(n_fields_spc)
+type(atlas_Field) :: fields_spc_nodes(n_fields_spc)
 type(atlas_Field) :: fields_oth(n_fields_oth)
 
 ! Atlas Fieldsets
@@ -73,11 +79,22 @@ type(atlas_FieldSet) :: fields_cld_set  ! cloud fields
 type(atlas_FieldSet) :: fields_spc_set  ! spctr fields
 type(atlas_FieldSet) :: fields_oth_set  ! other fields
 
+! SP fields on nodepoints
+type(atlas_FieldSet) :: gpfields_from_sp
+
+! CLD fields on nodepoints
+type(atlas_FieldSet) :: gpfields_cld_nodes
+
+! wind field on nodepoints
+type(atlas_Field) :: windfield
 
 type(atlas_Field) :: field_u
 type(atlas_Field) :: field_v
-type(atlas_Field) :: field_uv ! field that contains 2 variables: U and V
+type(atlas_Field) :: fields_uv(2)
 
+type(atlas_fvm_Method) :: fvm
+type(atlas_functionspace_NodeColumns) :: nodepoints
+type(atlas_functionspace_StructuredColumns) :: gridpoints
 
 LOGICAL :: LPROGNOSTIC
 LOGICAL :: LAREA
@@ -89,10 +106,6 @@ TYPE(TLOCATION), ALLOCATABLE:: LOCATIONS(:)
 INTEGER(KIND=JPIM) :: NB_LOCATIONS
 
 TYPE(TINFO) :: INFO
-
-type(atlas_fvm_Method) :: fvm
-type(atlas_functionspace_NodeColumns) :: nodepoints
-type(atlas_functionspace_StructuredColumns) :: gridpoints
 
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:) ! A coefficients for calculation of vertical levels
 REAL(KIND=JPRB), ALLOCATABLE :: PVBH(:) ! B coefficients for calculation of vertical levels
@@ -117,6 +130,7 @@ INTEGER(KIND=JPIM) :: MYPROC
 character(1024) :: scm_data_output_dir
 integer :: config_env_status
 
+CHARACTER(len=:), allocatable :: dataid
 
 public :: scm_setup
 public :: scm_run
@@ -133,7 +147,6 @@ subroutine scm_setup(plugin_config, model_data)
 
   type(atlas_Config) :: config
 
-  CHARACTER(LEN=:), allocatable :: DATAID
   CHARACTER(LEN=30) :: FILE
   CHARACTER(LEN=10) :: FIELDNAME
 
@@ -190,8 +203,12 @@ subroutine scm_setup(plugin_config, model_data)
 
 #include "nearest_distance.h"
 #include "nearest_distance_kdtree.h"
+#include "profiler_macros.h"
 
   write(msg,'(A)')  "--> getini1c: start"; call log%debug(msg)
+
+  ! start the profiler timer
+  START_PLUGIN_TIMER("scm_setup")
 
   ! setup MPI info
   mpi_comm = fckit_mpi_comm()
@@ -221,7 +238,6 @@ subroutine scm_setup(plugin_config, model_data)
     write(msg,'(A,A)') "getting field: ", trim(field_names_oth(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_oth(ifield)), fields_oth(ifield)) );
   enddo
-  
 
   ! fields U and V
   call plume_check(model_data%get_shared_atlas_field("u", field_u))
@@ -271,7 +287,7 @@ subroutine scm_setup(plugin_config, model_data)
   endif
 
   ! ID of data
-  found = plugin_config%get("DATAID", DATAID)
+  found = plugin_config%get("DATAID", dataid)
 
   ! max radius of search for nearest grid point
   found_delta = plugin_config%get("DELTA", ZDELTA)
@@ -421,15 +437,44 @@ subroutine scm_setup(plugin_config, model_data)
 ! check if the environment variable PLUME_PLUGINS_OUTPUT_DIR is set, if so the plugin will write output files there
 call get_environment_variable("PLUME_PLUGINS_OUTPUT_DIR", scm_data_output_dir, status=config_env_status)
 
+! initialise fieldset for CLD fields on nodepoints
+gpfields_cld_nodes = atlas_FieldSet("nodepoints")
+
+! initialise fieldset for SP fields on nodepoints
+gpfields_from_sp = atlas_FieldSet("nodepoints")
+
+! create CLD fields in nodes
+do ifield=1,size(fields_cld)
+  fields_cld_nodes(ifield) = nodepoints%create_field(name=trim(fields_cld(ifield)%name()), levels=fields_cld(ifield)%levels(), kind=atlas_real(JPRB))
+  call gpfields_cld_nodes%add(fields_cld_nodes(ifield))
+enddo
+
+! create SP fields in nodes
+do ifield=1,size(fields_spc)
+  fields_spc_nodes(ifield) = nodepoints%create_field(name=trim(fields_spc(ifield)%name()), levels=fields_spc(ifield)%levels(), kind=atlas_real(JPRB))
+  call gpfields_from_sp%add(fields_spc_nodes(ifield))
+enddo
+
+! create wind field in nodes
+fields_uv(1) = field_u
+fields_uv(2) = field_v
+windfield = nodepoints%create_field(name="wind", levels=field_u%levels(), kind=atlas_real(JPRB), variables=2)
+
 
 ! finalisation
-call config%final()
-call nodes%final()
-call mesh%final()
+call input_fs%final()
+call input_fs_parent%final()
 call input_grid%final()
+call grid%final()
+call mesh%final()
+call nodes%final()
 call meshgenerator%final()
 call partitioner%final()
+call lonlatField%final()
+call ghostField%final()
 
+! stop the profiler timer
+STOP_PLUGIN_TIMER("scm_setup")
   
 end subroutine scm_setup
 
@@ -452,28 +497,10 @@ subroutine scm_run( plugin_config, model_data )
 type(fckit_configuration) :: plugin_config
 type(plume_data) :: model_data
 
-type(atlas_Field) :: field
-
-type(atlas_FieldSet) :: sfcfields
-type(atlas_FieldSet) :: gpfields
-type(atlas_FieldSet) :: gpfields_from_sp
-type(atlas_FieldSet) :: gpdummy
-
-type(atlas_FieldSet) :: spfields
-type(atlas_Metadata) :: metadata
-
-type(atlas_Field) :: windfield
-
-type(atlas_Field) :: ghostField
-type(atlas_Field) :: lonlatField
-
-type(atlas_Field) :: field_tmp
-type(atlas_Field) :: fields_uv(2)
-
 INTEGER(KIND=c_int), POINTER :: ghost(:)
 REAL(KIND=c_double), POINTER :: lonlat(:,:)
 
-character(len=30) :: dataid, file
+character(len=30) :: file
 character(len=10) :: fieldname
 REAL(KIND=JPRB) :: zdelta
 logical :: LSINGLE
@@ -497,8 +524,6 @@ integer :: ifield
   REAL(KIND=c_double), POINTER :: dummy_data(:,:)
 #endif
 
-type(atlas_FieldSet) :: gpfields_cld_nodes  ! CLD fields on nodes
-
 ! name of output NetCDF file
 character (len=40) :: nc_filename
 
@@ -509,7 +534,10 @@ character(len=:), allocatable :: nc_fullpath
 #include "fillvar_from_plume.h"
 #include "su_wrt_nc.h"
 #include "wrt1c_nc.h"
-#include "create_nodefield.h"
+#include "update_nodefield.h"
+
+! start the profiler timer
+START_PLUGIN_TIMER("scm_run")
 
 call plume_check(model_data%get_int("NSTEP",NSTEP))
 call plume_check(model_data%get_double("TSTEP",TSTEP))
@@ -537,35 +565,33 @@ endif
 call log%info("SCM-PLUGIN executing step..")
 
 if (.not.larea) then
-  !$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(iloc)
-    do iloc=1, nb_locations
-      if( myproc == locations(iloc)%iproc ) then
-        call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
-      endif
-    enddo
-  !$OMP END PARALLEL DO
+  do iloc=1, nb_locations
+    if( myproc == locations(iloc)%iproc ) then
+      call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
+    endif
+  enddo
 endif
 
-! write(*,*) "field_u%halo() = ", field_u%halo()
-gpfields_from_sp = atlas_FieldSet("nodepoints")
+! update all the SP fields into nodepoints
+START_PLUGIN_TIMER("scm_run.update_sp_fields")
 do ifield=1,fields_spc_set%size()
-  field_tmp = create_nodefield_from_field(fields_spc(ifield),nodepoints)
-  call gpfields_from_sp%add(field_tmp)
+  call update_nodefield_from_field(fields_spc(ifield), nodepoints, fields_spc_nodes(ifield))
 enddo
+STOP_PLUGIN_TIMER("scm_run.update_sp_fields")
 
-fields_uv(1) = field_u
-fields_uv(2) = field_v
-windfield = create_nodefield_from_fields("wind", fields_uv, nodepoints)
+! update the windfield on nodepoints
+START_PLUGIN_TIMER("scm_run.update_wind_field")
+call update_nodefield_from_fields(fields_uv, nodepoints, windfield)
+STOP_PLUGIN_TIMER("scm_run.update_wind_field")
 
-
-! interpolate all the CLD fields into nodepoints 
-! write(*,*) "interpolating CLD.."
-gpfields_cld_nodes = atlas_FieldSet("nodepoints")
+! update all the CLD fields into nodepoints
+START_PLUGIN_TIMER("scm_run.update_cld_fields")
 do ifield=1,fields_cld_set%size()
-  field_tmp = create_nodefield_from_field(fields_cld(ifield),nodepoints)
-  call gpfields_cld_nodes%add(field_tmp)
+  call update_nodefield_from_field(fields_cld(ifield),nodepoints,fields_cld_nodes(ifield))  
 enddo
+STOP_PLUGIN_TIMER("scm_run.update_cld_fields")
 
+START_PLUGIN_TIMER("scm_run.process_plume_fields")
 call process_plume_fields(nproc, &
                           myproc, &
                           nb_locations, &
@@ -579,8 +605,10 @@ call process_plume_fields(nproc, &
                           gpfields_from_sp, &
                           gridpoints, &
                           gpfields_cld_nodes)
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 
+START_PLUGIN_TIMER("scm_run.write_netcdf")
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     ! netcdf write this location from this processor
@@ -613,8 +641,12 @@ do iloc=1, nb_locations
     endif
   endif
 enddo
+STOP_PLUGIN_TIMER("scm_run.write_netcdf")
 
 call log%info("SCM-PLUGIN step completed !")
+
+! stop the profiler timer
+STOP_PLUGIN_TIMER("scm_run")
 
 end subroutine scm_run
 
@@ -624,12 +656,13 @@ end subroutine scm_run
 subroutine scm_teardown(plugin_config, model_data)
   type(fckit_configuration) :: plugin_config
   type(plume_data) :: model_data
-  integer :: iloc
+  integer :: iloc, ifield
   CHARACTER*127 msg
 
   deallocate(pvah)
   deallocate(pvbh)
-  deallocate(locations)
+  deallocate(zlat)
+  deallocate(zlon)  
 
   write(msg,'(A)') " finished, cleaning up! "; call log%info(msg)
   do iloc=1, nb_locations
@@ -638,10 +671,58 @@ subroutine scm_teardown(plugin_config, model_data)
     endif
   enddo
 
-  ! Cleanup  
+  deallocate(locations)
+
+  ! Cleanup
+  call fvm%final()  
+
+  do ifield=1,n_fields_srf
+    call fields_srf(n_fields_srf)%final()
+  enddo
+
+  do ifield=1,n_fields_cld
+    call fields_cld(n_fields_cld)%final()
+  enddo
+
+  do ifield=1,n_fields_cld
+    call fields_cld_nodes(n_fields_cld)%final()
+  enddo
+
+  do ifield=1,n_fields_spc
+    call fields_spc(n_fields_spc)%final()
+  enddo
+
+  do ifield=1,n_fields_spc
+    call fields_spc_nodes(n_fields_spc)%final()
+  enddo
+
+  do ifield=1,n_fields_oth
+    call fields_oth(n_fields_oth)%final()
+  enddo
+
+
+  call fields_srf_set%final()
+  call fields_cld_set%final()
+  call fields_spc_set%final()
+  call fields_oth_set%final()
+  call gpfields_from_sp%final()
+  call gpfields_cld_nodes%final()
+
+  call windfield%final()
+  call field_u%final()
+  call field_v%final()
+  call fields_uv(1)%final()
+  call fields_uv(2)%final()
+
   call fvm%final()
+  call nodepoints%final()
+  call gridpoints%final()
+
+  PRINT_PLUGIN_TIMER(mpi_comm)
+
   call mpi_comm%final()
- 
+
+
 end subroutine scm_teardown
 
 

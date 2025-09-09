@@ -57,12 +57,28 @@ if( ENABLE_NETCDF AND NOT HAVE_NETCDF )
 endif()
 
 
+ecbuild_add_option( FEATURE SCM_USE_OPENMP
+                    DESCRIPTION "Enable OpenMP support for SCM-DATA"
+                    DEFAULT OFF
+                    REQUIRED_PACKAGES OpenMP )
+
 # enable the plume plugin
 ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     DESCRIPTION "plume plugin"
                     DEFAULT OFF
                     CONDITION ENABLE_ATLAS
                     REQUIRED_PACKAGES plume )
+
+ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_PROFILER
+                    DESCRIPTION "plume plugin profiler"
+                    DEFAULT OFF
+                    CONDITION ENABLE_SCM_PLUME_PLUGIN
+                    )
+
+if ( HAVE_SCM_PLUME_PLUGIN_PROFILER ) 
+  find_package(MPI REQUIRED Fortran)
+endif()
+  
 
 # *** Both the SCM tools and the plume plugin can be built in Single Precision (SP) or Double Precision (DP): ***
 # -DENABLE_SINGLE_PRECISION=ON               : builds the tools and the plume plugin in SP (or DP if OFF)
@@ -93,12 +109,24 @@ set( HAVE_SCM_PLUGIN_sp 0)
 set( HAVE_SCM_PLUGIN_dp 0)
 
 if (HAVE_SINGLE_PRECISION OR HAVE_PLUME_PLUGINS_SINGLE_PRECISION)
-  set( PLUGINS_DEFINITIONS_sp WITH_SCM_SINGLE_PRECISION )
+  set( PLUGINS_DEFINITIONS_sp WITH_SCM_SINGLE_PRECISION)
+
+  # also add profiler definition if plume plugin profiler is enabled
+  if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
+    list(APPEND PLUGINS_DEFINITIONS_sp WITH_SCM_PLUME_PLUGIN_PROFILER)
+  endif()
+
   set( HAVE_SCM_PLUGIN_sp 1)
 endif()
 
 if (HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
-  set( PLUGINS_DEFINITIONS_dp WITH_SCM_DOUBLE_PRECISION )
+  set( PLUGINS_DEFINITIONS_dp WITH_SCM_DOUBLE_PRECISION)
+
+  # also add profiler definition if plume plugin profiler is enabled
+  if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
+    list(APPEND PLUGINS_DEFINITIONS_dp WITH_SCM_PLUME_PLUGIN_PROFILER)
+  endif()
+
   set( HAVE_SCM_PLUGIN_dp 1)
 else()
   set( HAVE_SCM_PLUGIN_dp 0)
