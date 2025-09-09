@@ -81,11 +81,11 @@ else
 
 !        title
   title = ' SCM input from IFS: ' // trim(dataid)
-  istatus = NF_PUT_ATT_TEXT (incid, NF_GLOBAL, 'title',  50, title)
+  istatus = NF_PUT_ATT_TEXT (incid, NF_GLOBAL, 'title',  len_trim(title), title)
   call handle_err_nc(istatus)
 
 !        data identification
-  istatus = NF_PUT_ATT_TEXT (incid, NF_GLOBAL, 'dataID', 30, dataid)
+  istatus = NF_PUT_ATT_TEXT (incid, NF_GLOBAL, 'dataID', len_trim(dataid), trim(dataid))
   call handle_err_nc(istatus)
 
 !        number of levels (atmosphere, soil)

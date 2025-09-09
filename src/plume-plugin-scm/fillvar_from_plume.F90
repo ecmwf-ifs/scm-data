@@ -150,4 +150,7 @@ DO JFLD=1,ISIZE
 
 ENDDO
 
+call field%final()
+call metadata%final()
+
 END SUBROUTINE FILLVAR_FROM_PLUME
