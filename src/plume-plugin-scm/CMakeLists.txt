@@ -102,29 +102,41 @@ foreach(prec sp dp)
         set(PLUGIN_SCM_LIB_NAME "plugin_scm_data_${prec}")
 
         message(STATUS "Building plugin ${PLUGIN_SCM_LIB_NAME} and definitions: ${PLUGINS_DEFINITIONS_${prec}}")
+        message(STATUS "  - definitions: ${PLUGINS_DEFINITIONS_${prec}}")
+
+        # List of sources
+        set( SCM_SOURCES
+            ${INTERFACE_PLUGIN_SOURCES}
+            ../module/yomvar.F90
+            ../calcgeost.F90
+            ../handle_err_nc.F90
+            ../nearest_distance.F90
+            ../nearest_distance_kdtree.F90
+            ../ncdf_varsetup1c.F90
+            ../ncdf_varwrite1c.F90
+            ../su_wrt_nc.F90
+            ../wrt1c_nc.F90
+            update_nodefield.F90
+            fillvar_from_plume.F90
+            plugin_impl.F90            
+            plugin_utils.F90
+            process_plume_fields.F90
+            vert_coord_tables.F90
+            ../rdnam.F90
+        )
+
+        # append the profiler source if enabled
+        if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
+            list(APPEND SCM_SOURCES plugin_profiler.F90)
+        endif()
+
 
         # SCM plugin Single Precision
         ecbuild_add_library(
             TARGET ${PLUGIN_SCM_LIB_NAME}
 
             SOURCES
-                ${INTERFACE_PLUGIN_SOURCES}
-                ../module/yomvar.F90
-                ../calcgeost.F90
-                ../handle_err_nc.F90
-                ../nearest_distance.F90
-                ../nearest_distance_kdtree.F90
-                ../ncdf_varsetup1c.F90
-                ../ncdf_varwrite1c.F90
-                ../su_wrt_nc.F90
-                ../wrt1c_nc.F90
-                create_nodefield.F90
-                fillvar_from_plume.F90
-                plugin_impl.F90
-                plugin_utils.F90
-                process_plume_fields.F90
-                vert_coord_tables.F90
-                ../rdnam.F90
+                ${SCM_SOURCES}
 
             DEFINITIONS
                 ${PLUGINS_DEFINITIONS_${prec}}
@@ -147,10 +159,19 @@ foreach(prec sp dp)
                 plume_plugin
         )
 
+        # link OpenMP if enabled
+        if (HAVE_SCM_USE_OPENMP)
+            target_link_libraries( ${PLUGIN_SCM_LIB_NAME} PRIVATE OpenMP::OpenMP_Fortran )
+        endif()
+
         # Set the Fortran module directory for the plugin
         set_target_properties(${PLUGIN_SCM_LIB_NAME}
             PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/plugin_mods_${prec}
         )
+
+        if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
+            target_link_libraries( ${PLUGIN_SCM_LIB_NAME} PRIVATE MPI::MPI_Fortran )
+        endif()
 
     endif()
 

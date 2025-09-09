@@ -41,6 +41,10 @@ use atlas_module
 use yomvar
 use plugin_utils_mod, only : param_name2id
 
+#ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
+  use plugin_profiler_mod
+#endif
+
 implicit none
 
 INTEGER(KIND=JPIM), intent(in) :: nproc
@@ -69,20 +73,11 @@ INTEGER(KIND=JPIM) :: iloc
 type(atlas_Nabla) :: nabla
 type(atlas_Field) :: grad
 type(atlas_Field) :: grad_one_lev ! special case (1 lvl only)
-type(atlas_Field) :: gradu
-type(atlas_Field) :: gradv
-type(atlas_Field) :: wind_u
-type(atlas_Field) :: wind_v
-type(atlas_Field) :: gradq
 type(atlas_Field) :: grad_wind
 type(atlas_Field) :: field
 type(atlas_Metadata) :: metadata
-character(len=10) :: fieldname
 
-type(atlas_Field) :: field_nodes
-type(atlas_Field) :: ghostField
-INTEGER(KIND=c_int), POINTER :: ghost(:)
-type(atlas_mesh_Nodes) :: nodes
+character(len=10) :: fieldname
 INTEGER(KIND=JPIM) :: nb_nodes
 INTEGER(KIND=JPIM) :: jnode
 
@@ -132,6 +127,7 @@ TYPE(TPARAM), POINTER :: PX
 integer :: i,j
 
 #include "calcgeost.h"
+#include "profiler_macros.h"
 !-------------------------------------------------------------------------
 
 IF( NPROC > 1 ) mpi_comm = fckit_mpi_comm()
@@ -142,22 +138,21 @@ zpi = 2.0_jprb*asin(1.0_jprb)
 zdeg2rad= zpi/180._jprb
 
 !! calculate wind + derivatives
+START_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
+nabla = atlas_Nabla(fvm)
 grad_wind = nodepoints%create_field(name="gradwind",kind=atlas_real(JPRB),levels=klev,variables=4) ! 4 vars = 2x2 matrix
 call nodepoints%halo_exchange(windfield)
-
-nabla = atlas_Nabla(fvm)
-
 call nabla%gradient(windfield,grad_wind)
 call grad_wind%data(grad_wind_data)
 call windfield%data(wind)
 
-
 grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
 grad_one_lev = nodepoints%create_field(name="grad_one_lev", kind=atlas_real(JPRB),levels=1, variables=2)
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
 
 ! scalar gp from sp
+START_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_sp")
 isize = gpfields_from_sp%size()
-
 do jfld=1,isize
   field = gpfields_from_sp%field(jfld)
   metadata = field%metadata()
@@ -226,9 +221,11 @@ do jfld=1,isize
   enddo ! iloc
 
 enddo ! ifield
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_sp")
 
 
-! loop over gp fields 
+! loop over gp fields
+START_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_gp")
 isize = gpfields%size()
 do jfld=1,isize
 
@@ -286,9 +283,13 @@ do jfld=1,isize
     enddo ! ilev
   enddo ! iloc
 enddo ! field
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_gp")
 
+START_PLUGIN_TIMER("scm_run.process_plume_fields.mpi_barrier")
 if( NPROC > 1 ) call mpi_comm%barrier()
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.mpi_barrier")
 
+START_PLUGIN_TIMER("scm_run.process_plume_fields.fill_locations")
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     inode = locations(iloc)%ILOC
@@ -359,8 +360,17 @@ do iloc=1, nb_locations
     
   endif
 enddo
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.fill_locations")
 
+START_PLUGIN_TIMER("scm_run.process_plume_fields.finalise_fields")
 call nabla%final()
+call grad%final()
+call grad_one_lev%final()
+call grad_wind%final()
+call field%final()
+call metadata%final()
+
 nullify(PX)
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.finalise_fields")
 
 end subroutine process_plume_fields
