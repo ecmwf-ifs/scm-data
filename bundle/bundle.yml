@@ -11,7 +11,7 @@ projects :
 
     - ecbuild :
         git     : https://github.com/ecmwf/ecbuild
-        version : 3.8.5
+        version : develop
         bundle  : false
 
     - eccodes :
@@ -49,7 +49,7 @@ projects :
 
     - fiat :
         git     : https://github.com/ecmwf-ifs/fiat
-        version : 1.1.0
+        version : 1.6.0
 
     - ectrans :
         git     : https://github.com/ecmwf-ifs/ectrans
