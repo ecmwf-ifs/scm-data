@@ -70,6 +70,6 @@ $exedir/scm_plugin_tester
 for out_file_id in $(seq 1 1 12); do
     out_file_id_2d=$(printf "%02d" $out_file_id)
     ref_file=${output_data_dir}/scm_in_0001_${out_file_id_2d}.nc
-    out_file=${tmpdir_tests}/scm_in_proc_00001_pt_000${out_file_id_2d}_step_00000.nc
+    out_file=${tmpdir_tests}/scm_in_proc_00001_pt_000${out_file_id_2d}_step_00999.nc
     $exedir/scm_compare ${ref_file} ${out_file} 1.0E-8
 done
