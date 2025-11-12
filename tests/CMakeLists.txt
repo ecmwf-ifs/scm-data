@@ -8,9 +8,6 @@
 # does it submit to any jurisdiction.
 
 
-# Test files repository on Nexus
-set(ECBUILD_DOWNLOAD_BASE_URL https://get.ecmwf.int/repository/scm-data-test-files)
-
 # get test files t159 from NEXUS
 set(test_files_t159_dir ${CMAKE_BINARY_DIR}/tests/data/input_files_t159)
 add_custom_target(make_test_data_dir ALL COMMAND ${CMAKE_COMMAND} -E make_directory ${test_files_t159_dir})
@@ -22,7 +19,7 @@ ecbuild_get_test_multidata(TARGET test_files_t159
                                 namelist_1c_t159
                                 spec_grib_t159
                            DIRNAME
-                                input_files_t159
+                                scm-data/test-data/input_files_t159
                            DIRLOCAL
                                 ${test_files_t159_dir}
                            NOCHECK
@@ -48,7 +45,7 @@ ecbuild_get_test_multidata(TARGET test_output_files_t159
                                 scm_in_0001_11.nc
                                 scm_in_0001_12.nc
                            DIRNAME 
-                                output_files_t159
+                                scm-data/test-data/output_files_t159
                            DIRLOCAL
                                 ${test_output_files_t159_dir}
                            NOCHECK
