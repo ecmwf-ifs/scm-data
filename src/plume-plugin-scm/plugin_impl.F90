@@ -82,6 +82,8 @@ type(atlas_Field) :: field_uv ! field that contains 2 variables: U and V
 LOGICAL :: LPROGNOSTIC
 LOGICAL :: LAREA
 INTEGER :: RUN_EVERY
+INTEGER :: INIT_STEP
+INTEGER :: FINAL_STEP
 
 TYPE(TLOCATION), ALLOCATABLE:: LOCATIONS(:)
 INTEGER(KIND=JPIM) :: NB_LOCATIONS
@@ -254,6 +256,18 @@ subroutine scm_setup(plugin_config, model_data)
   found = plugin_config%get("RUN_EVERY", RUN_EVERY)
   if (.not.found) then
     RUN_EVERY = 1
+  endif
+
+  ! Plugin initial step
+  found = plugin_config%get("INIT_STEP", INIT_STEP)
+  if (.not.found) then
+    INIT_STEP = 0
+  endif
+
+  ! Plugin final step
+  found = plugin_config%get("FINAL_STEP", FINAL_STEP)
+  if (.not.found) then
+    FINAL_STEP = -1
   endif
 
   ! ID of data
@@ -512,7 +526,11 @@ INFO%DTIME = NSTEP * TSTEP ! time step in seconds
 
 
 ! Run the plugin only at every RUN_EVERY steps
-if (MOD(NSTEP, RUN_EVERY) /= 0) then
+if ( (MOD(NSTEP, RUN_EVERY) /= 0) .or. (NSTEP.lt.INIT_STEP) ) then
+  return
+endif
+
+if ( (FINAL_STEP.ge.0) .and. (NSTEP.gt.FINAL_STEP) ) then
   return
 endif
 
