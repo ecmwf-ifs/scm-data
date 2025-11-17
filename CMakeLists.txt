@@ -58,7 +58,7 @@ if( ENABLE_NETCDF AND NOT HAVE_NETCDF )
 endif()
 
 
-ecbuild_add_option( FEATURE SCM_USE_OPENMP
+ecbuild_add_option( FEATURE OMP
                     DESCRIPTION "Enable OpenMP support for SCM-DATA"
                     DEFAULT OFF
                     REQUIRED_PACKAGES OpenMP )

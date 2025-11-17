@@ -160,7 +160,7 @@ foreach(prec sp dp)
         )
 
         # link OpenMP if enabled
-        if (HAVE_SCM_USE_OPENMP)
+        if (HAVE_OMP)
             target_link_libraries( ${PLUGIN_SCM_LIB_NAME} PRIVATE OpenMP::OpenMP_Fortran )
         endif()
 
