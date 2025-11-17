@@ -1,6 +1,5 @@
 module plugin_profiler_mod
 #ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
-  use mpi
   use yomvar
 
   implicit none
@@ -22,16 +21,18 @@ contains
 
   subroutine start_timer(name)
     character(len=*), intent(in) :: name
+    real(kind=jprd), external :: timef
     integer :: idx
     idx = find_or_add(name)
-    timers(idx)%start = MPI_Wtime()
+    timers(idx)%start = timef()/1000.0_jprd
   end subroutine
 
   subroutine stop_timer(name)
     character(len=*), intent(in) :: name
+    real(kind=jprd), external :: timef
     integer :: idx
     idx = find_or_add(name)
-    timers(idx)%total = timers(idx)%total + MPI_Wtime() - timers(idx)%start
+    timers(idx)%total = timers(idx)%total + timef()/1000.0_jprd - timers(idx)%start
   end subroutine
 
   function find_or_add(name) result(idx)
