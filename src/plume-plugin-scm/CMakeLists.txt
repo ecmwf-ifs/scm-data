@@ -169,10 +169,6 @@ foreach(prec sp dp)
             PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/plugin_mods_${prec}
         )
 
-        if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
-            target_link_libraries( ${PLUGIN_SCM_LIB_NAME} PRIVATE MPI::MPI_Fortran )
-        endif()
-
     endif()
 
 
