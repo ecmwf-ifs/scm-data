@@ -76,11 +76,6 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_PROFILER
                     CONDITION ENABLE_SCM_PLUME_PLUGIN
                     )
 
-if ( HAVE_SCM_PLUME_PLUGIN_PROFILER ) 
-  find_package(MPI REQUIRED Fortran)
-endif()
-  
-
 # *** Both the SCM tools and the plume plugin can be built in Single Precision (SP) or Double Precision (DP): ***
 # -DENABLE_SINGLE_PRECISION=ON               : builds the tools and the plume plugin in SP (or DP if OFF)
 # -DENABLE_PLUME_PLUGINS_SINGLE_PRECISION=ON : option used to build the plume plugin in single precision
