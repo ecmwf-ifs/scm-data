@@ -67,6 +67,7 @@ type TLOCATION
   REAL(KIND=JPRB) :: RLATI ! nearest location actually used in degrees
   REAL(KIND=JPRB) :: RLONI_USER ! user requested location in degrees
   REAL(KIND=JPRB) :: RLATI_USER ! user requested location in degrees
+  INTEGER(KIND=JPIM) :: ITARGET_STEP = -1 ! extract only at this NSTEP; -1 means every step
   INTEGER(KIND=JPIM) :: IPROC
   INTEGER(KIND=JPIM) :: ILOC
   INTEGER(KIND=JPIM) :: IFILE_ID

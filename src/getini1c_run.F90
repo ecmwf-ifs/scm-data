@@ -71,7 +71,7 @@ INTEGER(KIND=JPIM) :: NPROC, MYPROC
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:), PVBH(:)
 REAL(KIND=JPRB), ALLOCATABLE :: zlat(:), zlon(:)
 
-CHARACTER*127 msg
+character(127) :: msg
 type(fckit_mpi_comm) :: mpi_comm
 
 ! name of output NetCDF file

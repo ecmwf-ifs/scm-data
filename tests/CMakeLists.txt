@@ -148,6 +148,19 @@ if (HAVE_SCM_PLUME_PLUGIN)
             TYPE     SCRIPT
             COMMAND  test_scm_plugin.sh
         )
+
+        # Test that each point is extracted only at its configured timestep
+        ecbuild_configure_file(
+            test_scm_plugin_timestep.sh.in
+            test_scm_plugin_timestep.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE        SCRIPT
+            COMMAND     test_scm_plugin_timestep.sh
+            TEST_DEPENDS test_files_t159
+        )
+
     else()
         message("Double Precision is NOT enabled => test_scm_plugin is NOT built.")
     endif()

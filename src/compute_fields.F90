@@ -65,7 +65,7 @@ REAL(KIND=JPRB) :: zslat_p
 REAL(KIND=JPRB) :: zdudx(klev), zdudy(klev), zdvdx(klev), zdvdy(klev)
 REAL(KIND=JPRB)    :: zdeg2rad,zzaux, zdir, zpi
 
-CHARACTER*127 msg
+character(127) :: msg
 type(fckit_mpi_comm) :: mpi_comm
 
 TYPE(TPARAM), POINTER :: PX

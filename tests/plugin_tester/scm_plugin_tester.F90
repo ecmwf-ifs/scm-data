@@ -55,7 +55,7 @@ type(grib_fields_provider) :: fld_provider
 
 ! plume-config and plugin-config 
 ! needed by the driver to setup the GRIB fields
-character(256) :: plume_config_file
+character(1024) :: plume_config_file
 type(fckit_configuration) :: plume_config
 type(fckit_configuration), allocatable :: plugin_configs(:)
 type(fckit_configuration) :: scm_plugin_config
@@ -73,7 +73,7 @@ subroutine setup()
   type(fckit_configuration) :: requested_data_catalogue
   integer :: ifield
   integer :: config_env_status
-  CHARACTER*127 msg
+  character(512) :: msg
 
   call plume_check(plume_initialise())
   call plume_check(manager%initialise())
@@ -193,12 +193,20 @@ subroutine run( return_code )
   REAL(KIND=JPRB), ALLOCATABLE :: zlat(:)
   REAL(KIND=JPRB), ALLOCATABLE :: zlon(:)
   
-  CHARACTER*127 msg
+  character(512) :: msg
   type(fckit_mpi_comm) :: mpi_comm
 
   integer :: iplugin
   integer :: ifield
   integer :: ipoint
+
+  ! multi-step loop
+  integer :: n_steps
+  integer :: i_step
+  integer :: n_steps_env_status
+  integer :: loop_nstep_first
+  integer :: loop_nstep_last
+  character(32) :: n_steps_env
 
   character (len=:), allocatable :: plugin_name
   type(fckit_pathname) :: plugin_config_path
@@ -341,57 +349,44 @@ subroutine run( return_code )
   call fld_provider%setup(nlev, gridpoints, nodepoints, sfcfields, gpfields, gpfields_from_sp, windfield)
   call fld_provider%provide_fields(data_from_plume)
 
-  ! Initialise parameter
-  call plume_check( data_from_plume%create_int("NSTEP", 999) )
+  ! Determine the range of NSTEP values:
+  ! - If env var SCM_PLUGIN_TESTER_N_STEPS=N is set, loop steps 1..N
+  ! - Otherwise run a single step with NSTEP=999 (backward compatibility)
+  call get_environment_variable("SCM_PLUGIN_TESTER_N_STEPS", n_steps_env, status=n_steps_env_status)
+  if (n_steps_env_status == 0) then
+    read(n_steps_env, *) n_steps
+    loop_nstep_first = 1
+    loop_nstep_last  = n_steps
+  else
+    loop_nstep_first = 999
+    loop_nstep_last  = 999
+  endif
 
   ! dummy values for TSTEP/INIT_DATE/INIT_TIME (for testing only)
-  tstep = 0.0
-  init_date = 20151015
-  init_time = 12
+  tstep      = 0.0
+  init_date  = 20151015
+  init_time  = 12
   call plume_check(data_from_plume%provide_double("TSTEP", tstep))
   call plume_check(data_from_plume%provide_int("INIT_DATE", init_date))
   call plume_check(data_from_plume%provide_int("INIT_TIME", init_time))
 
   INFO%IDATE = INIT_DATE
   INFO%ITIME = INIT_TIME/3600 ! convert seconds to hours
-  INFO%ISTEP = NSTEP*TSTEP/3600 ! convert seconds to hours
-  INFO%NSTEP = NSTEP*TSTEP/3600 ! convert seconds to hours
 
-  ! Feed plugins with the data
+  ! Register NSTEP data slot with the first step value, then loop over all steps
+  nstep = loop_nstep_first
+  call plume_check( data_from_plume%create_int("NSTEP", nstep) )
   call plume_check(manager%feed_plugins(data_from_plume))
 
-  ! run
-  call plume_check(manager%run())
+  do i_step = loop_nstep_first, loop_nstep_last
+    INFO%DTIME = nstep * tstep
+    call plume_check(data_from_plume%update_int("NSTEP", i_step))
+    call plume_check(manager%run())
+  enddo
 
   ! *** this writes the netcdf files as in the original workflow
   call lonlatField%data(lonlat)
   call ghostField%data(ghost)
-
-  ! call fill_and_write(INFO, &
-  !                     LOCATIONS, &
-  !                     nb_locations, &
-  !                     zlat, &
-  !                     zlon, &
-  !                     nb_nodes, &
-  !                     ghost, &
-  !                     lonlat, &
-  !                     myproc, &
-  !                     zdelta, &
-  !                     LAREA, &
-  !                     PVAH, &
-  !                     PVBH, &
-  !                     DATAID, &
-  !                     nlev, &
-  !                     666, &
-  !                     sfcfields, &
-  !                     nproc, &
-  !                     fvm, &
-  !                     nodepoints, &
-  !                     windfield, &
-  !                     gpfields_from_sp, &
-  !                     gridpoints, &
-  !                     gpfields)
-
   
   ! Cleanup
   call config%final()

@@ -37,7 +37,7 @@ REAL*4                   :: zvar1d_temp(nlev) ! single precision
 !REAL(KIND=JPRB)            :: zvar1d_temp(nlev)
 INTEGER(KIND=JPIM)           :: ivarid, istatus
 INTEGER(KIND=JPIM), PARAMETER :: JPKD = KIND(zvar1d_temp)
-CHARACTER*127 msg
+character(127) :: msg
 
 #include "netcdf.inc"
 

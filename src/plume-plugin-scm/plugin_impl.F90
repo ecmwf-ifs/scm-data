@@ -166,8 +166,9 @@ subroutine scm_setup(plugin_config, model_data)
 
   REAL(KIND=JPRB) :: PT_LAT
   REAL(KIND=JPRB) :: PT_LON
+  INTEGER(KIND=JPIM) :: PT_STEP
   
-  CHARACTER*127 msg
+  character(512) :: msg
   
   integer :: ifield
   integer :: ipoint
@@ -191,7 +192,7 @@ subroutine scm_setup(plugin_config, model_data)
   type(atlas_Field) :: lonlatField
   type(atlas_Field) :: ghostField
 
-  character(256) :: vtable_testing_namelist
+  character(1024) :: vtable_testing_namelist
   integer :: vtable_testing_namelist_status
 
 #ifdef WITH_SCM_SINGLE_PRECISION  
@@ -313,6 +314,13 @@ subroutine scm_setup(plugin_config, model_data)
   do ipoint=1,nb_locations
     found = plugin_config_points(ipoint)%get("lat", PT_LAT)
     found = plugin_config_points(ipoint)%get("lon", PT_LON)
+    found = plugin_config_points(ipoint)%get("timestep", PT_STEP)
+    if (.not.found) then
+      found = plugin_config_points(ipoint)%get("nstep", PT_STEP)
+    endif
+    if (.not.found) then
+      PT_STEP = -1
+    endif
     
     if( PT_LON < 0. ) then
       PT_LON = 360. + PT_LON
@@ -322,6 +330,7 @@ subroutine scm_setup(plugin_config, model_data)
     locations(ipoint)%RLATI = PT_LAT
     locations(ipoint)%RLONI_USER = PT_LON
     locations(ipoint)%RLATI_USER = PT_LAT
+    locations(ipoint)%ITARGET_STEP = PT_STEP
     locations(ipoint)%ILOC = -1
     locations(ipoint)%IFILE_ID = -1
     locations(ipoint)%IPROC = -1
@@ -335,7 +344,7 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0)')   "nlev = ", nlev; call log%info(msg)
 
   do ipoint=1,nb_locations
-    write(msg,'(A,F10.3,A,F10.3)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint); call log%info(msg)
+    write(msg,'(A,F10.3,A,F10.3,A,I0)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint), ", timestep=", locations(ipoint)%ITARGET_STEP; call log%info(msg)
   enddo
 
   !        2.   set up necessary info on gg and sh fields
@@ -515,7 +524,7 @@ INTEGER(KIND=JPIM) :: isize
 INTEGER(KIND=JPIM) :: iparam
 INTEGER(KIND=JPIM) :: nlocmax
 
-CHARACTER*127 msg
+character(512) :: msg
 integer :: ifield
 
 #ifdef WITH_SCM_SINGLE_PRECISION  
@@ -565,11 +574,11 @@ endif
 call log%info("SCM-PLUGIN executing step..")
 
 if (.not.larea) then
-  do iloc=1, nb_locations
-    if( myproc == locations(iloc)%iproc ) then
-      call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
-    endif
-  enddo
+    do iloc=1, nb_locations
+      if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == NSTEP ) ) then
+        call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
+      endif
+    enddo
 endif
 
 ! update all the SP fields into nodepoints
@@ -594,6 +603,7 @@ STOP_PLUGIN_TIMER("scm_run.update_cld_fields")
 START_PLUGIN_TIMER("scm_run.process_plume_fields")
 call process_plume_fields(nproc, &
                           myproc, &
+                          NSTEP, &
                           nb_locations, &
                           locations(1:nb_locations), &
                           NLEV, &
@@ -610,7 +620,7 @@ STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 START_PLUGIN_TIMER("scm_run.write_netcdf")
 do iloc=1, nb_locations
-  if( myproc == locations(iloc)%iproc ) then
+  if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == NSTEP ) ) then
     ! netcdf write this location from this processor
     if (.not.larea) then
       write(msg,'(A)') " setting up output fields to netcdf  "; call log%debug(msg)
@@ -657,7 +667,7 @@ subroutine scm_teardown(plugin_config, model_data)
   type(fckit_configuration) :: plugin_config
   type(plume_data) :: model_data
   integer :: iloc, ifield
-  CHARACTER*127 msg
+  character(127) :: msg
 
   deallocate(pvah)
   deallocate(pvbh)

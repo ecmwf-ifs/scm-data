@@ -75,7 +75,7 @@ type(atlas_FieldSet) :: gpfields
 ! internal
 INTEGER(KIND=JPIM) :: J
 INTEGER(KIND=JPIM) :: iloc
-CHARACTER*127 msg
+character(127) :: msg
 
 ! name of output NetCDF file
 character (len=40) :: nc_filename
