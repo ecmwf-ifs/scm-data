@@ -11,12 +11,31 @@ module plugin_utils_mod
 
 implicit none
 
+#ifdef WITH_SCM_GRIB2_FIELDS
+! Surface fields (stl1-4, swvl1-4, istl1-4 removed and replaced by the three
+! multi-level fields sot/vsw/sit below).
+integer, parameter :: n_fields_srf = 37
+character(len=16)  :: field_names_srf(n_fields_srf) = [character(len=16) :: &
+  "sd", "src", "skt", "ci", "lmlt", "lmld", "lblt", "ltlt", "lshf", "lict", "licd", "tsn", "asn", "rsn", "sst", &
+  "lsm", "sr", "al", "aluvp", "alnip", "aluvd", "alnid", "lai_lv", "lai_hv", "sdfor", "slt", "sdor", &
+  "isor", "anor", "slor", "lsrh", "cvh", "cvl", "tvh", "tvl", "cl", "dl"]
+
+! Multi-level soil fields (each with ncss=4 vertical layers). Replace the twelve
+! single-level layers stl1-4 / swvl1-4 / istl1-4.
+integer, parameter :: n_fields_sol = 3
+character(len=16)  :: field_names_sol(n_fields_sol) = [character(len=16) :: "sot", "vsw", "sit"]
+! -----------------------------------------------------------------> 260360, 260199, 262024
+#else
 ! All Surf fields
 integer, parameter :: n_fields_srf = 49
 character(len=16)  :: field_names_srf(n_fields_srf) = [character(len=16) :: "stl1", "stl2", "stl3", "stl4", "swvl1", "swvl2", "swvl3", "swvl4", &
   "sd", "src", "skt", "ci", "lmlt", "lmld", "lblt", "ltlt", "lshf", "lict", "licd", "tsn", "asn", "rsn", "sst", &
   "istl1", "istl2", "istl3", "istl4", "lsm", "sr", "al", "aluvp", "alnip", "aluvd", "alnid", "lai_lv", "lai_hv", "sdfor", "slt", "sdor", &
   "isor", "anor", "slor", "lsrh", "cvh", "cvl", "tvh", "tvl", "cl", "dl"]
+
+! No multi-level soil fields in single-level mode.
+integer, parameter :: n_fields_sol = 0
+#endif
 
 
 ! All Cloud fields
@@ -30,17 +49,34 @@ character(len=16)  :: field_names_spc(n_fields_spc) = [character(len=16) :: "d",
 ! -------------------------------------------------------------------------> 155, 152, 130, 138, 129, 135 
 
 ! Other parameters
+#ifdef WITH_SCM_GRIB2_FIELDS
+! 100u/100v are not provided as input fields in GRIB2 mode.
+integer, parameter :: n_fields_oth = 3
+character(len=16)  :: field_names_oth(n_fields_oth) = [character(len=16) :: "u", "v", "tcw"]
+#else
 integer, parameter :: n_fields_oth = 5
 character(len=16)  :: field_names_oth(n_fields_oth) = [character(len=16) :: "u", "v", "100u", "100v", "tcw"]
+#endif
 
 
 ! All fields
-integer, parameter :: n_fields = n_fields_srf + n_fields_cld + n_fields_spc + n_fields_oth
+integer, parameter :: n_fields = n_fields_srf + n_fields_sol + n_fields_cld + n_fields_spc + n_fields_oth
+#ifdef WITH_SCM_GRIB2_FIELDS
+character(len=16)  :: field_names(n_fields) = [character(len=16) :: &
+  "sd", "src", "skt", "ci", "lmlt", "lmld", "lblt", "ltlt", "lshf", "lict", "licd", "tsn", "asn", "rsn", "sst", &
+  "lsm", "sr", "al", "aluvp", "alnip", "aluvd", "alnid", "lai_lv", "lai_hv", "sdfor", "slt", "sdor", &
+  "isor", "anor", "slor", "lsrh", "cvh", "cvl", "tvh", "tvl", "cl", "dl", &
+  "sot", "vsw", "sit", &
+  "cc", "ciwc", "clwc", "crwc", "cswc", &
+  "d", "lnsp", "q", "t", "vo", "z", "w", &
+  "u", "v", "tcw"]
+#else
 character(len=16)  :: field_names(n_fields) = [character(len=16) :: "stl1", "stl2", "stl3", "stl4", "swvl1", "swvl2", "swvl3", "swvl4", &
   "sd", "src", "skt", "ci", "lmlt", "lmld", "lblt", "ltlt", "lshf", "lict", "licd", "tsn", "asn", "rsn", "sst", &
   "istl1", "istl2", "istl3", "istl4", "lsm", "sr", "al", "aluvp", "alnip", "aluvd", "alnid", "lai_lv", "lai_hv", "sdfor", "slt", "sdor", &
   "isor", "anor", "slor", "lsrh", "cvh", "cvl", "tvh", "tvl", "cl", "dl", "cc", "ciwc", "clwc", "crwc", "cswc", &
   "d", "lnsp", "q", "t", "vo", "z", "w", "u", "v", "100u", "100v", "tcw"]
+#endif
 
 contains
 
@@ -192,6 +228,15 @@ function param_name2id(name) result(id)
         id = 228247
     else if (trim(name) == "tcw") then
         id = 136
+    else if (trim(name) == "sot") then
+        ! Multi-level soil temperature (replaces stl1..stl4).
+        id = 260360
+    else if (trim(name) == "vsw") then
+        ! Multi-level volumetric soil water (replaces swvl1..swvl4).
+        id = 260199
+    else if (trim(name) == "sit") then
+        ! Multi-level sea-ice temperature (replaces istl1..istl4).
+        id = 262024
     else 
         id = -999
     endif

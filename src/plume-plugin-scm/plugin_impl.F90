@@ -47,11 +47,17 @@ module plugin_impl_mod
   use plugin_utils_mod, only : n_fields_cld
   use plugin_utils_mod, only : n_fields_spc
   use plugin_utils_mod, only : n_fields_oth
+#ifdef WITH_SCM_GRIB2_FIELDS
+  use plugin_utils_mod, only : n_fields_sol
+#endif
 
   use plugin_utils_mod, only : field_names_srf
   use plugin_utils_mod, only : field_names_cld
   use plugin_utils_mod, only : field_names_spc
   use plugin_utils_mod, only : field_names_oth
+#ifdef WITH_SCM_GRIB2_FIELDS
+  use plugin_utils_mod, only : field_names_sol
+#endif
 
   use plugin_utils_mod, only : param_name2idx, get_vertical_tables_from_namelist
 
@@ -72,6 +78,11 @@ type(atlas_Field) :: fields_cld_nodes(n_fields_cld)
 type(atlas_Field) :: fields_spc(n_fields_spc)
 type(atlas_Field) :: fields_spc_nodes(n_fields_spc)
 type(atlas_Field) :: fields_oth(n_fields_oth)
+#ifdef WITH_SCM_GRIB2_FIELDS
+! Multi-level soil fields (sot/vsw/sit) - merged into fields_srf_set at setup
+! time so they flow through the existing FILLVAR_FROM_PLUME dispatch by paramId.
+type(atlas_Field) :: fields_sol(n_fields_sol)
+#endif
 
 ! Atlas Fieldsets
 type(atlas_FieldSet) :: fields_srf_set  ! surfc field
@@ -221,6 +232,14 @@ subroutine scm_setup(plugin_config, model_data)
     write(msg,'(A,A)') "getting field: ", trim(field_names_srf(ifield)); call log%info(msg)
     call plume_check(model_data%get_shared_atlas_field(trim(field_names_srf(ifield)), fields_srf(ifield)) );
   enddo
+
+#ifdef WITH_SCM_GRIB2_FIELDS
+  ! fill-in array of fields (SOL - multi-level soil, each with ncss=4 layers)
+  do ifield=1,size(field_names_sol)
+    write(msg,'(A,A)') "getting field: ", trim(field_names_sol(ifield)); call log%info(msg)
+    call plume_check(model_data%get_shared_atlas_field(trim(field_names_sol(ifield)), fields_sol(ifield)) );
+  enddo
+#endif
 
   ! fill-in array of fields (CLD)
   do ifield=1,size(field_names_cld)
@@ -412,6 +431,15 @@ subroutine scm_setup(plugin_config, model_data)
   do ifield=1,size(fields_srf)
     call fields_srf_set%add( fields_srf(ifield) )
   enddo
+#ifdef WITH_SCM_GRIB2_FIELDS
+  ! Merge the multi-level soil fields into fields_srf_set so the existing
+  ! FILLVAR_FROM_PLUME call in scm_run dispatches them by paramId alongside the
+  ! surface fields. FILLVAR_FROM_PLUME already indexes values(:,:) as (nlev,node)
+  ! so the extra vertical dimension is handled transparently.
+  do ifield=1,size(fields_sol)
+    call fields_srf_set%add( fields_sol(ifield) )
+  enddo
+#endif
 
   fields_cld_set = atlas_FieldSet("gridpoints")
   do ifield=1,size(fields_cld)
