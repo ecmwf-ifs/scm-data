@@ -31,18 +31,27 @@ module grib_fields_provider_mod
     use plugin_utils_mod, only : n_fields_spc
     use plugin_utils_mod, only : n_fields_oth
     use plugin_utils_mod, only : n_fields
+#ifdef WITH_SCM_GRIB2_FIELDS
+    use plugin_utils_mod, only : n_fields_sol
+#endif
 
     use plugin_utils_mod, only : field_names_srf
     use plugin_utils_mod, only : field_names_cld
     use plugin_utils_mod, only : field_names_spc
     use plugin_utils_mod, only : field_names_oth
     use plugin_utils_mod, only : field_names
+#ifdef WITH_SCM_GRIB2_FIELDS
+    use plugin_utils_mod, only : field_names_sol
+#endif
 
     use plugin_utils_mod, only : param_name2id
     
     use yomvar, only : jprd
     use yomvar, only : jprb
     use yomvar, only : jpim    
+#ifdef WITH_SCM_GRIB2_FIELDS
+    use yomvar, only : ncss
+#endif
 
     implicit none
     
@@ -63,6 +72,12 @@ module grib_fields_provider_mod
         type(atlas_Field) :: fields_cld(n_fields_cld)
         type(atlas_Field) :: fields_spc(n_fields_spc)
         ! type(atlas_Field) :: fields_oth(n_fields_oth)
+#ifdef WITH_SCM_GRIB2_FIELDS
+        ! Multi-level soil fields (sot/vsw/sit). Synthesized at setup time by
+        ! repackaging the single-level stl/swvl/istl GRIB messages present in the
+        ! surface GRIB fixture into ncss=4-level ATLAS fields.
+        type(atlas_Field) :: fields_sol(n_fields_sol)
+#endif
 
         ! fields u and v wind components
         type(atlas_Field) :: field_u
@@ -170,6 +185,44 @@ module grib_fields_provider_mod
             this%fields_srf(ifield) = tmp_field
         enddo
 
+#ifdef WITH_SCM_GRIB2_FIELDS
+        ! Create the SOL fields (multi-level soil) by repackaging the
+        ! constituent single-level GRIB messages that are still present in
+        ! `sfcfields`. Each SOL field ends up with ncss=4 vertical layers, so
+        ! the runtime plugin observes exactly the same values as in the
+        ! single-level build mode -- just packed differently. Layout of
+        ! sol_paramids: column j lists the four single-level paramIds that
+        ! feed layer 1..4 of the j-th multi-level field (sot, vsw, sit).
+        block
+            integer, parameter :: sol_paramids(ncss, n_fields_sol) = reshape( [ &
+              139, 170, 183, 236, &  ! sot <- stl1..stl4
+               39,  40,  41,  42, &  ! vsw <- swvl1..swvl4
+               35,  36,  37,  38  ], shape=[ncss, n_fields_sol] )  ! sit <- istl1..istl4
+            integer :: isol_lvl
+
+            do ifield=1,n_fields_sol
+
+                tmp_field = gridpoints%create_field(name=trim(field_names_sol(ifield)), kind=atlas_real(jprb), type="scalar", levels=ncss)
+                call tmp_field%data(values)
+
+                do isol_lvl=1,ncss
+                    do ifield_in_set=1,sfcfields%size()
+                        tmp_field_single_level = sfcfields%field(ifield_in_set)
+                        metadata = tmp_field_single_level%metadata()
+                        call metadata%get('paramId',iparam)
+                        call metadata%get('level',ilvl)
+
+                        if (iparam == sol_paramids(isol_lvl, ifield)) then
+                            call tmp_field_single_level%data(values_single_level)
+                            values(isol_lvl,:) = values_single_level
+                        endif
+                    enddo
+                enddo
+
+                this%fields_sol(ifield) = tmp_field
+            enddo
+        end block
+#endif
 
 
         ! Create the CLOUD fields (and fill them in with value in the corresponding fieldset)
@@ -261,8 +314,11 @@ module grib_fields_provider_mod
         values_v(:,:) = values_uv(2,:,:)
 
         ! other fields (unused)
+#ifndef WITH_SCM_GRIB2_FIELDS
+        ! 100u/100v are only expected by the plugin in the single-level (non-GRIB2) mode.
         this%field_100u = nodepoints%create_field(name="100u", kind=atlas_real(JPRB), levels=nlev)
         this%field_100v = nodepoints%create_field(name="100v", kind=atlas_real(JPRB), levels=nlev)
+#endif
         this%field_tcw = nodepoints%create_field(name="tcw", kind=atlas_real(JPRB), levels=nlev)                        
 
     end subroutine
@@ -277,6 +333,11 @@ module grib_fields_provider_mod
         do ifield=1,size(this%fields_srf)
           call plume_check( data%provide_atlas_field_shared(this%fields_srf(ifield)%name(), this%fields_srf(ifield)) )
         enddo
+#ifdef WITH_SCM_GRIB2_FIELDS
+        do ifield=1,size(this%fields_sol)
+          call plume_check( data%provide_atlas_field_shared(this%fields_sol(ifield)%name(), this%fields_sol(ifield)) )
+        enddo
+#endif
         
         do ifield=1,size(this%fields_cld)
           call plume_check( data%provide_atlas_field_shared(this%fields_cld(ifield)%name(), this%fields_cld(ifield)) )
@@ -289,8 +350,10 @@ module grib_fields_provider_mod
         call plume_check( data%provide_atlas_field_shared("u", this%field_u) )
         call plume_check( data%provide_atlas_field_shared("v", this%field_v) )
 
+#ifndef WITH_SCM_GRIB2_FIELDS
         call plume_check( data%provide_atlas_field_shared("100u", this%field_100u) )
         call plume_check( data%provide_atlas_field_shared("100v", this%field_100v) )
+#endif
         call plume_check( data%provide_atlas_field_shared("tcw", this%field_tcw) )
 
         write(*,*) "finished providing data! "

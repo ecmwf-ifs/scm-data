@@ -70,11 +70,21 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     CONDITION ENABLE_ATLAS
                     REQUIRED_PACKAGES plume )
 
+# Enables a simple profiler for the plume plugin
 ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_PROFILER
                     DESCRIPTION "plume plugin profiler"
                     DEFAULT OFF
                     CONDITION ENABLE_SCM_PLUME_PLUGIN
                     )
+
+# When ON, the plume plugin (and its tester) expect three 4-level input fields
+# (sot=260360, vsw=260199, sit=262024) instead of the twelve single-level fields
+# stl1..stl4, swvl1..swvl4, istl1..istl4. Destination storage PSTL/PSWL/PTIA(ncss=4)
+# and the produced NetCDF variables t_soil/q_soil/t_sea_ice are unchanged.
+ecbuild_add_option( FEATURE SCM_GRIB2_FIELDS
+                    DESCRIPTION "Read soil temp/moisture/ice-temp as multi-level fields (sot/vsw/sit)"
+                    DEFAULT OFF
+                    CONDITION HAVE_SCM_PLUME_PLUGIN )
 
 # *** Both the SCM tools and the plume plugin can be built in Single Precision (SP) or Double Precision (DP): ***
 # -DENABLE_SINGLE_PRECISION=ON               : builds the tools and the plume plugin in SP (or DP if OFF)
@@ -126,6 +136,14 @@ if (HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
   set( HAVE_SCM_PLUGIN_dp 1)
 else()
   set( HAVE_SCM_PLUGIN_dp 0)
+endif()
+
+# Propagate the multi-level soil switch to every plugin precision variant and
+# to the plugin tester (which compiles plugin_utils.F90 and grib_fields_provider.F90
+# into a separate executable).
+if( HAVE_SCM_GRIB2_FIELDS )
+  list( APPEND PLUGINS_DEFINITIONS_sp WITH_SCM_GRIB2_FIELDS )
+  list( APPEND PLUGINS_DEFINITIONS_dp WITH_SCM_GRIB2_FIELDS )
 endif()
 
 ############################################################################################

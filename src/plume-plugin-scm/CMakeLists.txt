@@ -10,6 +10,37 @@
 # Plume Fortran macro
 include(${plume_INTERFACE_PLUGIN_CMAKE_FILE})
 
+# Soil-related required params: either the twelve single-level layers
+# (stl/swvl/istl) or the three multi-level fields (sot/vsw/sit), depending on
+# the SCM_GRIB2_FIELDS feature toggle. Selection is compile-time because
+# plume_plugin_interface() bakes the required-params list into the generated
+# plugin interface.
+if( HAVE_SCM_GRIB2_FIELDS )
+    set( _soil_params
+        "sot:ATLAS_FIELD"
+        "vsw:ATLAS_FIELD"
+        "sit:ATLAS_FIELD" )
+    # 100u/100v are not provided as input fields when SCM_GRIB2_FIELDS is ON.
+    set( _100m_wind_params )
+else()
+    set( _soil_params
+        "stl1:ATLAS_FIELD"
+        "stl2:ATLAS_FIELD"
+        "stl3:ATLAS_FIELD"
+        "stl4:ATLAS_FIELD"
+        "swvl1:ATLAS_FIELD"
+        "swvl2:ATLAS_FIELD"
+        "swvl3:ATLAS_FIELD"
+        "swvl4:ATLAS_FIELD"
+        "istl1:ATLAS_FIELD"
+        "istl2:ATLAS_FIELD"
+        "istl3:ATLAS_FIELD"
+        "istl4:ATLAS_FIELD" )
+    set( _100m_wind_params
+        "100u:ATLAS_FIELD"
+        "100v:ATLAS_FIELD" )
+endif()
+
 plume_plugin_interface(
     PLUGIN_TEMPLATE
         ${CMAKE_CURRENT_SOURCE_DIR}/plugin_scm_data.F90.in
@@ -24,14 +55,7 @@ plume_plugin_interface(
         "TSTEP:DOUBLE"
         "INIT_DATE:INT"
         "INIT_TIME:INT"
-        "stl1:ATLAS_FIELD"
-        "stl2:ATLAS_FIELD"
-        "stl3:ATLAS_FIELD"
-        "stl4:ATLAS_FIELD"
-        "swvl1:ATLAS_FIELD"
-        "swvl2:ATLAS_FIELD"
-        "swvl3:ATLAS_FIELD"
-        "swvl4:ATLAS_FIELD"
+        ${_soil_params}
         "sd:ATLAS_FIELD"
         "src:ATLAS_FIELD"
         "skt:ATLAS_FIELD"
@@ -47,10 +71,6 @@ plume_plugin_interface(
         "asn:ATLAS_FIELD"
         "rsn:ATLAS_FIELD"
         "sst:ATLAS_FIELD"
-        "istl1:ATLAS_FIELD"
-        "istl2:ATLAS_FIELD"
-        "istl3:ATLAS_FIELD"
-        "istl4:ATLAS_FIELD"
         "lsm:ATLAS_FIELD"
         "sr:ATLAS_FIELD"
         "al:ATLAS_FIELD"
@@ -87,8 +107,7 @@ plume_plugin_interface(
         "w:ATLAS_FIELD"
         "u:ATLAS_FIELD"
         "v:ATLAS_FIELD"
-        "100u:ATLAS_FIELD"
-        "100v:ATLAS_FIELD"
+        ${_100m_wind_params}
         "tcw:ATLAS_FIELD"
     PLUGINCORE_NAME
         "PluginCoreSCMData"

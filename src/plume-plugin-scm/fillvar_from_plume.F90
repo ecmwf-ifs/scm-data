@@ -57,6 +57,23 @@ DO JFLD=1,ISIZE
      PX%PSWL(3)=values(1,knode)
   CASE (42)
      PX%PSWL(4)=values(1,knode)
+#ifdef WITH_SCM_GRIB2_FIELDS
+  CASE (260360)
+     ! sot - multi-level soil temperature: 4 vertical layers packed into values(:,knode).
+     do i=1,ncss
+        PX%PSTL(i)=values(i,knode)
+     enddo
+  CASE (260199)
+     ! vsw - multi-level volumetric soil water: 4 vertical layers.
+     do i=1,ncss
+        PX%PSWL(i)=values(i,knode)
+     enddo
+  CASE (262024)
+     ! sit - multi-level sea-ice temperature: 4 vertical layers.
+     do i=1,ncss
+        PX%PTIA(i)=values(i,knode)
+     enddo
+#endif
   CASE (141)
      PX%PSD   =values(1,knode)
   CASE (198)

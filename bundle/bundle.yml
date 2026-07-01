@@ -2,7 +2,7 @@
 ### Bundle
 
 name    : scm-data-bundle
-version : 0.2.1
+version : 0.3.0
 cmake   : CMAKE_LINK_DEPENDS_NO_SHARED=ON
           ENABLE_OMP=ON
           ENABLE_SINGLE_PRECISION=OFF
@@ -11,12 +11,12 @@ projects :
 
     - ecbuild :
         git     : https://github.com/ecmwf/ecbuild
-        version : develop
+        version : 3.13.1
         bundle  : false
 
     - eccodes :
         git     : https://github.com/ecmwf/eccodes
-        version : 2.38.3
+        version : 2.44.2
         cmake   : >
             ENABLE_ECCODES_THREADS=ON
             ECCODES_ENABLE_NETCDF=OFF
@@ -28,7 +28,7 @@ projects :
 
     - eckit :
         git     : https://github.com/ecmwf/eckit
-        version : 1.28.5
+        version : 1.32.2
         cmake   : >
             ECKIT_ENABLE_XXHASH=OFF
             ECKIT_ENABLE_VIENNACL=OFF
@@ -42,7 +42,7 @@ projects :
 
     - fckit :
         git     : https://github.com/ecmwf/fckit
-        version : 0.13.1
+        version : 0.14.0
         require : eckit
         cmake   : >
             FCKIT_ENABLE_FINAL=OFF
@@ -58,7 +58,7 @@ projects :
 
     - atlas :
         git     : https://github.com/ecmwf/atlas
-        version : 0.39.0
+        version : 0.44.0
         require : eckit fckit
         cmake   : >
             ATLAS_ENABLE_TESSELATION=OFF
@@ -68,7 +68,7 @@ projects :
 
     - plume :
         git     : https://github.com/ecmwf/plume
-        version : 0.2.0
+        version : 0.5.0
         require : eckit fckit atlas
 
     - scm-data :
@@ -117,3 +117,11 @@ options :
     - without-scm-plume-plugin-double-precision :
         help  : Do not build the scm-data plume plugin with single precision
         cmake : ENABLE_PLUME_PLUGINS_DOUBLE_PRECISION=OFF
+
+    - with-scm-plume-plugin-grib2-fields :
+        help  : Build the scm-data plume plugin with GRIB2 fields
+        cmake : ENABLE_SCM_GRIB2_FIELDS=ON
+
+    - without-scm-plume-plugin-grib2-fields :
+        help  : Do not build the scm-data plume plugin with GRIB2 fields
+        cmake : ENABLE_SCM_GRIB2_FIELDS=OFF

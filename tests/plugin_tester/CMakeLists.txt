@@ -43,6 +43,12 @@ ecbuild_add_executable(
         testing_interface/
         ../../src/interface/
 
+    # Keep plugin_utils.F90 (and the tester's own sources that reference the
+    # multi-level soil field names) in sync with the double-precision plugin
+    # build. The dp variant is the only one built for tests (see tests/CMakeLists.txt).
+    DEFINITIONS
+        ${PLUGINS_DEFINITIONS_dp}
+
     LIBS
         atlas_f
         trans_dp
