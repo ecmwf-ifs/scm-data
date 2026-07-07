@@ -9,6 +9,7 @@
 
 subroutine process_plume_fields(nproc, &
                                 myproc, &
+                                kstep, &
                                 nb_locations, &
                                 locations, &
                                 klev, &
@@ -49,6 +50,7 @@ implicit none
 
 INTEGER(KIND=JPIM), intent(in) :: nproc
 INTEGER(KIND=JPIM), intent(in) :: myproc
+INTEGER(KIND=JPIM), intent(in) :: kstep
 INTEGER(KIND=JPIM), intent(in) :: nb_locations
 TYPE(TLOCATION), target, intent(inout) :: locations(nb_locations)
 INTEGER(KIND=JPIM), intent(in) :: klev
@@ -118,7 +120,7 @@ REAL(KIND=JPRB)    :: zzaux
 REAL(KIND=JPRB)    :: zdir
 REAL(KIND=JPRB)    :: zpi
 
-CHARACTER*512 msg
+character(512) :: msg
 type(fckit_mpi_comm) :: mpi_comm
 
 TYPE(TPARAM), POINTER :: PX
@@ -189,8 +191,8 @@ do jfld=1,isize
 
   ! fill values
   do iloc=1, nb_locations
-    do ilev=1,n_field_levels
-      if( myproc == locations(iloc)%iproc ) then
+    if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
+      do ilev=1,n_field_levels
         inode = locations(iloc)%ILOC
         PX => locations(iloc)%PP
         SELECT CASE (iparam)
@@ -216,8 +218,8 @@ do jfld=1,isize
         CASE DEFAULT
           write(msg,'(A,I0,A,I0)') " GP_FROM_SP WARNING: UNKNOWN FIELD (PARAMETER , LEVEL) ", iparam, " ", ilev ; call log%info(msg)
         END SELECT
-      endif
-    enddo ! ilev
+      enddo ! ilev
+    endif
   enddo ! iloc
 
 enddo ! ifield
@@ -247,8 +249,8 @@ do jfld=1,isize
 
   ! fill values
   do iloc=1, nb_locations
-    do ilev=1,n_field_levels
-      if( myproc == locations(iloc)%iproc ) then
+    if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
+      do ilev=1,n_field_levels
         inode = locations(iloc)%ILOC
         PX => locations(iloc)%PP
         SELECT CASE (iparam)
@@ -279,8 +281,8 @@ do jfld=1,isize
         CASE DEFAULT
           write(msg,'(A,I0,A,I0)') " GPFIELDS WARNING, NOT USED (PARAMETER , LEVEL)", iparam, " ", ilev ; call log%info(msg)
         END SELECT
-      endif
-    enddo ! ilev
+      enddo ! ilev
+    endif
   enddo ! iloc
 enddo ! field
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_gp")
@@ -291,7 +293,7 @@ STOP_PLUGIN_TIMER("scm_run.process_plume_fields.mpi_barrier")
 
 START_PLUGIN_TIMER("scm_run.process_plume_fields.fill_locations")
 do iloc=1, nb_locations
-  if( myproc == locations(iloc)%iproc ) then
+  if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
     inode = locations(iloc)%ILOC
     PX => locations(iloc)%PP
 

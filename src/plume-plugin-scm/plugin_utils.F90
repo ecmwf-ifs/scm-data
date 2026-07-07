@@ -223,6 +223,8 @@ subroutine get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH
     REAL(KIND=JPRB) :: LATN, LATS, LONW, LONE, TSTEP    
     REAL(KIND=JPRB), allocatable, intent(out) :: PVAH(:), PVBH(:)
     INTEGER(KIND=JPIM), intent(out) :: NLEV
+
+    INTEGER :: NAMELIST_UNIT
     
     NAMELIST /NAMUS/ LAT, LON, LATN, LATS, LONW, LONE, LPROGNOSTIC, &
      &               DATAID,TSTEP, DELTA, NSTEP, NLEV, NSMAX, CGRID, DVALH, DVBH
@@ -230,8 +232,8 @@ subroutine get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH
     NLEV=-1
 
     ! Read the namelist file
-    OPEN(51,FILE=vtable_testing_namelist)    
-    READ(51,NAMUS)
+    open(newunit=namelist_unit, file=vtable_testing_namelist)
+    read(namelist_unit, namus)
     
     if( NLEV > -1 ) THEN
       allocate(pvah(0:nlev))
@@ -239,6 +241,8 @@ subroutine get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH
       pvah(0:nlev) = DVALH(0:nlev)
       pvbh(0:nlev) = DVBH(0:nlev)
     endif
+
+    close(namelist_unit)
     
 end subroutine get_vertical_tables_from_namelist
 

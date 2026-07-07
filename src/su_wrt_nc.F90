@@ -42,7 +42,7 @@ character (len=50) :: title
 
 INTEGER(KIND=JPIM), PARAMETER :: JPKD=KIND(zv)
 
-CHARACTER*1024 msg
+character(1024) :: msg
 
 !-----------------------------------------------------------------------
 

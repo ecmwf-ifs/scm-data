@@ -76,7 +76,7 @@ type(atlas_FieldSet) :: gpfields
 ! internal
 INTEGER(KIND=JPIM) :: J
 INTEGER(KIND=JPIM) :: iloc
-CHARACTER*127 msg
+character(127) :: msg
 
 
 end subroutine fill_And_write

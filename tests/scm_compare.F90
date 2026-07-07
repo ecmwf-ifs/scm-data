@@ -25,10 +25,10 @@ integer :: nvars1, nvars2
 integer :: ndims1, ndims2
 integer :: natt1, natt2
 integer :: unlimdimid1, unlimdimid2
-character*256 :: attname1, attname2
+character(256) :: attname1, attname2
 
 integer :: i, status
-character*1024 :: msg
+character(1024) :: msg
 
 ! Inquire variables
 status = nf_inq(ncid1, ndims1, nvars1, natt1, unlimdimid1); call handle_err_nc(status)
@@ -70,10 +70,10 @@ subroutine compare_var_names(ncid1, ncid2)
     integer :: ndims1, ndims2
     integer :: natt1, natt2
     integer :: unlimdimid1, unlimdimid2
-    character*256 :: varname1, varname2
+    character(256) :: varname1, varname2
 
     integer :: i, status
-    character*1024 :: msg
+    character(1024) :: msg
 
     ! Inquire variables
     status = nf_inq(ncid1, ndims1, nvars1, natt1, unlimdimid1); call handle_err_nc(status)
@@ -131,8 +131,8 @@ subroutine compare(ncid1, ncid2, eps)
     real(8), allocatable :: data1_double(:), data2_double(:)
     integer, allocatable :: data1_int(:), data2_int(:)
 
-    character*256 :: varname1, varname2, dimname1, dimname2, attname1, attname2
-    character*1024 :: msg
+    character(256) :: varname1, varname2, dimname1, dimname2, attname1, attname2
+    character(1024) :: msg
 
     real(8) :: eps
 
@@ -294,9 +294,9 @@ use scm_compare_mod
 IMPLICIT NONE
 
 integer :: arg_count
-character*256 :: filename1, filename2
+character(256) :: filename1, filename2
 integer :: ncid1, ncid2
-character*1024 :: msg
+character(1024) :: msg
 integer :: status
 
 character(len=256) :: eps_arg

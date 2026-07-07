@@ -72,8 +72,10 @@ REAL(KIND=JPRB) :: ZINDEF
      
 INTEGER(KIND=JPIM) :: IGRIB_IN, ibitmap
 INTEGER(KIND=JPIM) :: ISTARTSTEP, IENDSTEP
-CHARACTER*127 CGRIDTYPE,CLEVTYPE,CSTEPTYPE
-CHARACTER*127 msg
+character(127) :: CGRIDTYPE
+character(127) :: CLEVTYPE
+character(127) :: CSTEPTYPE
+character(127) :: msg
 
 INTEGER(KIND=JPIM) :: j, iret, ifi, ifo, ilenf, iparam, ilev, idate, itime, istep, itag, iflds, isp, itot, jfld
 

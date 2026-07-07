@@ -1,0 +1,28 @@
+{
+    "plugins": [
+        {
+            "name": "PluginSCMData",
+            "lib": "plugin_scm_data_dp",
+            "core-config": {
+                "LAREA": 0,
+                "LPROGNOSTIC": 1,
+                "DATAID": "test_timestep_filter",
+                "DELTA" : 0.75,
+                "points": [
+                    {"ID": 1, "lat": 51.61, "lon": -0.81, "timestep": 1},
+                    {"ID": 2, "lat": 51.14, "lon": -1.44, "timestep": 1},
+                    {"ID": 3, "lat": 51.62, "lon": -1.08, "timestep": 1},
+                    {"ID": 4, "lat": 52.5, "lon": -1.0, "timestep": 1},
+                    {"ID": 5, "lat": 50.92, "lon": -0.47, "timestep": 2},
+                    {"ID": 6, "lat": 54.2, "lon": -1.3, "timestep": 2},
+                    {"ID": 7, "lat": 52.5, "lon": -3.0, "timestep": 2},
+                    {"ID": 8, "lat": 53.0, "lon": -1.0, "timestep": 2},
+                    {"ID": 9, "lat": 52.2, "lon": 0.4, "timestep": 5},
+                    {"ID": 10, "lat": 51.0, "lon": -2.6, "timestep": 5},
+                    {"ID": 11, "lat": 51.97, "lon": 4.92, "timestep": 5},
+                    {"ID": 12, "lat": 36.37, "lon": -97.3, "timestep": 5}
+                ]
+            }
+        }
+    ]
+}

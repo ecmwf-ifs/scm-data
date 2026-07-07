@@ -85,7 +85,7 @@ contains
     integer(kind=jpim) :: myproc
     real(kind=jprd) :: local, gmin, gmax, gsum
     integer :: i_timer
-    CHARACTER*127 msg
+    character(127) :: msg
 
     nproc  = mpi_comm%size()
     myproc = mpi_comm%rank()
