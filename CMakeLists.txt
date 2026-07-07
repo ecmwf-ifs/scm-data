@@ -83,7 +83,7 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_PROFILER
 # and the produced NetCDF variables t_soil/q_soil/t_sea_ice are unchanged.
 ecbuild_add_option( FEATURE SCM_GRIB2_FIELDS
                     DESCRIPTION "Read soil temp/moisture/ice-temp as multi-level fields (sot/vsw/sit)"
-                    DEFAULT OFF
+                    DEFAULT ON
                     CONDITION HAVE_SCM_PLUME_PLUGIN )
 
 # *** Both the SCM tools and the plume plugin can be built in Single Precision (SP) or Double Precision (DP): ***
