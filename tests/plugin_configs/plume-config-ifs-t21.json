@@ -7,6 +7,7 @@
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
                 "RUN_EVERY": 1,
+                "APPEND_OUTPUT": 1,
                 "DATAID": "data_ifs_test_t21",
                 "DELTA" : 6.0,
                 "points": [

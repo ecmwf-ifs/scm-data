@@ -42,6 +42,9 @@ module plugin_impl_mod
   use yomvar
   use vert_coord_tables_mod
 
+  use scm_nc_output_mod,      only : output_writer
+  use extraction_manager_mod, only : extraction_manager
+
   ! Available fields from the plugin
   use plugin_utils_mod, only : n_fields_srf
   use plugin_utils_mod, only : n_fields_cld
@@ -137,9 +140,11 @@ INTEGER(KIND=JPIM) :: NPROC
 INTEGER(KIND=JPIM) :: MYPROC
 
 
-! Output directory (from env variable)
-character(1024) :: scm_data_output_dir
-integer :: config_env_status
+! NetCDF output writer (owns output-directory + append-mode state)
+type(output_writer) :: nc_writer
+
+! Extraction scheduler: maps each time step -> list of location indices to extract.
+type(extraction_manager) :: extract_mgr
 
 CHARACTER(len=:), allocatable :: dataid
 
@@ -177,7 +182,6 @@ subroutine scm_setup(plugin_config, model_data)
 
   REAL(KIND=JPRB) :: PT_LAT
   REAL(KIND=JPRB) :: PT_LON
-  INTEGER(KIND=JPIM) :: PT_STEP
   
   character(512) :: msg
   
@@ -333,14 +337,7 @@ subroutine scm_setup(plugin_config, model_data)
   do ipoint=1,nb_locations
     found = plugin_config_points(ipoint)%get("lat", PT_LAT)
     found = plugin_config_points(ipoint)%get("lon", PT_LON)
-    found = plugin_config_points(ipoint)%get("timestep", PT_STEP)
-    if (.not.found) then
-      found = plugin_config_points(ipoint)%get("nstep", PT_STEP)
-    endif
-    if (.not.found) then
-      PT_STEP = -1
-    endif
-    
+
     if( PT_LON < 0. ) then
       PT_LON = 360. + PT_LON
     endif
@@ -349,7 +346,8 @@ subroutine scm_setup(plugin_config, model_data)
     locations(ipoint)%RLATI = PT_LAT
     locations(ipoint)%RLONI_USER = PT_LON
     locations(ipoint)%RLATI_USER = PT_LAT
-    locations(ipoint)%ITARGET_STEP = PT_STEP
+    ! extraction schedule is now owned by extract_mgr (see below);
+    ! ITARGET_STEP is left at its default value from yomvar.
     locations(ipoint)%ILOC = -1
     locations(ipoint)%IFILE_ID = -1
     locations(ipoint)%IPROC = -1
@@ -358,12 +356,15 @@ subroutine scm_setup(plugin_config, model_data)
     zlon(ipoint) = PT_LON
   enddo
 
+  ! Build the step -> [iloc] extraction schedule from the per-point config.
+  call extract_mgr%init(plugin_config_points, nb_locations)
+
   write(msg,'(A,I0)')   "nb_locations = ", nb_locations; call log%info(msg)
   write(msg,'(A,F5.3)') "zdelta = ", zdelta; call log%info(msg)
   write(msg,'(A,I0)')   "nlev = ", nlev; call log%info(msg)
 
   do ipoint=1,nb_locations
-    write(msg,'(A,F10.3,A,F10.3,A,I0)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint), ", timestep=", locations(ipoint)%ITARGET_STEP; call log%info(msg)
+    write(msg,'(A,F10.3,A,F10.3)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint); call log%info(msg)
   enddo
 
   !        2.   set up necessary info on gg and sh fields
@@ -471,8 +472,8 @@ subroutine scm_setup(plugin_config, model_data)
   enddo
 
 
-! check if the environment variable PLUME_PLUGINS_OUTPUT_DIR is set, if so the plugin will write output files there
-call get_environment_variable("PLUME_PLUGINS_OUTPUT_DIR", scm_data_output_dir, status=config_env_status)
+! initialise the NetCDF output writer (reads APPEND_OUTPUT + PLUME_PLUGINS_OUTPUT_DIR)
+call nc_writer%init(plugin_config)
 
 ! initialise fieldset for CLD fields on nodepoints
 gpfields_cld_nodes = atlas_FieldSet("nodepoints")
@@ -561,16 +562,8 @@ integer :: ifield
   REAL(KIND=c_double), POINTER :: dummy_data(:,:)
 #endif
 
-! name of output NetCDF file
-character (len=40) :: nc_filename
-
-! full path of output NetCDF file
-character(len=:), allocatable :: nc_fullpath
-
 
 #include "fillvar_from_plume.h"
-#include "su_wrt_nc.h"
-#include "wrt1c_nc.h"
 #include "update_nodefield.h"
 
 ! start the profiler timer
@@ -603,7 +596,7 @@ call log%info("SCM-PLUGIN executing step..")
 
 if (.not.larea) then
     do iloc=1, nb_locations
-      if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == NSTEP ) ) then
+      if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, NSTEP) ) then
         call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
       endif
     enddo
@@ -642,43 +635,16 @@ call process_plume_fields(nproc, &
                           windfield, &
                           gpfields_from_sp, &
                           gridpoints, &
-                          gpfields_cld_nodes)
+                          gpfields_cld_nodes, &
+                          extract_mgr)
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 
 START_PLUGIN_TIMER("scm_run.write_netcdf")
-do iloc=1, nb_locations
-  if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == NSTEP ) ) then
-    ! netcdf write this location from this processor
-    if (.not.larea) then
-      write(msg,'(A)') " setting up output fields to netcdf  "; call log%debug(msg)
-      write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%debug(msg)
-      write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%debug(msg)
-      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%debug(msg)
-      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%debug(msg)
-      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%debug(msg)
-
-      ! assemble the filename
-      write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',NSTEP,'.nc'
-
-      ! if the env variable PLUME_PLUGINS_OUTPUT_DIR is set, write the output files there
-      ! otherwise write them in the current directory
-      if (config_env_status .eq. 0) then
-        nc_fullpath = trim(scm_data_output_dir)//'/'//trim(nc_filename)
-      else
-        nc_fullpath = trim(nc_filename)
-      end if
-
-      ! setup the output NetCDF file
-      CALL SU_WRT_NC (nc_fullpath,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
-
-      ! write data to the NetCDF file
-      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE; call log%debug(msg)
-      CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
-
-    endif
-  endif
-enddo
+if (.not.larea) then
+  call nc_writer%write(myproc, NSTEP, locations, nb_locations, &
+                     & PVAH, PVBH, dataid, nlev, INFO, extract_mgr)
+endif
 STOP_PLUGIN_TIMER("scm_run.write_netcdf")
 
 call log%info("SCM-PLUGIN step completed !")
@@ -755,6 +721,9 @@ subroutine scm_teardown(plugin_config, model_data)
   call fvm%final()
   call nodepoints%final()
   call gridpoints%final()
+
+  call nc_writer%finalize()
+  call extract_mgr%finalize()
 
   PRINT_PLUGIN_TIMER(mpi_comm)
 

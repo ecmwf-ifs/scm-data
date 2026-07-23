@@ -6,8 +6,8 @@
             "core-config": {
                 "LAREA": 0,
                 "LPROGNOSTIC": 1,
-                "APPEND_OUTPUT": 0,
-                "DATAID": "test_timestep_filter",
+                "APPEND_OUTPUT": 1,
+                "DATAID": "test_timestep_filter_append",
                 "DELTA" : 0.75,
                 "points": [
                     {"ID": 1, "lat": 51.61, "lon": -0.81, "timestep": 1},
