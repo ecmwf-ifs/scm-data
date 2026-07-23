@@ -20,7 +20,8 @@ subroutine process_plume_fields(nproc, &
                                 windfield, &
                                 gpfields_from_sp, &
                                 gridpoints, &
-                                gpfields)
+                                gpfields, &
+                                extract_mgr)
 
 ! * calculates horizontal gradients of z, T and q
 !    are used in the pressure gradient force to get the geostrophic wind
@@ -41,6 +42,7 @@ use atlas_module
 
 use yomvar
 use plugin_utils_mod, only : param_name2id
+use extraction_manager_mod, only : extraction_manager
 
 #ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
   use plugin_profiler_mod
@@ -62,6 +64,7 @@ type(atlas_Field), intent(inout) :: windfield
 type(atlas_FieldSet),intent(in) :: gpfields_from_sp
 type(atlas_functionspace_StructuredColumns), intent(in) :: gridpoints
 type(atlas_FieldSet),intent(in) :: gpfields
+type(extraction_manager), intent(in) :: extract_mgr
 
 INTEGER(KIND=JPIM) :: jlev
 INTEGER(KIND=JPIM) :: n_field_levels
@@ -191,7 +194,7 @@ do jfld=1,isize
 
   ! fill values
   do iloc=1, nb_locations
-    if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
+    if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, kstep) ) then
       do ilev=1,n_field_levels
         inode = locations(iloc)%ILOC
         PX => locations(iloc)%PP
@@ -249,7 +252,7 @@ do jfld=1,isize
 
   ! fill values
   do iloc=1, nb_locations
-    if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
+    if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, kstep) ) then
       do ilev=1,n_field_levels
         inode = locations(iloc)%ILOC
         PX => locations(iloc)%PP
@@ -293,7 +296,7 @@ STOP_PLUGIN_TIMER("scm_run.process_plume_fields.mpi_barrier")
 
 START_PLUGIN_TIMER("scm_run.process_plume_fields.fill_locations")
 do iloc=1, nb_locations
-  if( myproc == locations(iloc)%iproc .and. ( locations(iloc)%ITARGET_STEP < 0 .or. locations(iloc)%ITARGET_STEP == kstep ) ) then
+  if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, kstep) ) then
     inode = locations(iloc)%ILOC
     PX => locations(iloc)%PP
 

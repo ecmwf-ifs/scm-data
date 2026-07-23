@@ -161,6 +161,33 @@ if (HAVE_SCM_PLUME_PLUGIN)
             TEST_DEPENDS test_files_t159
         )
 
+        # Same per-point timestep filtering, but with APPEND_OUTPUT=1 so
+        # each point produces a single file across the run (no _step_ suffix).
+        ecbuild_configure_file(
+            test_scm_plugin_timestep_append.sh.in
+            test_scm_plugin_timestep_append.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE        SCRIPT
+            COMMAND     test_scm_plugin_timestep_append.sh
+            TEST_DEPENDS test_files_t159
+        )
+
+        # Multi-timestep extraction per point (list of ints in "timesteps"),
+        # with APPEND_OUTPUT=1 so each point produces a single file with one
+        # time record per matching step.
+        ecbuild_configure_file(
+            test_scm_plugin_multi_timesteps.sh.in
+            test_scm_plugin_multi_timesteps.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE        SCRIPT
+            COMMAND     test_scm_plugin_multi_timesteps.sh
+            TEST_DEPENDS test_files_t159
+        )
+
     else()
         message("Double Precision is NOT enabled => test_scm_plugin is NOT built.")
     endif()
