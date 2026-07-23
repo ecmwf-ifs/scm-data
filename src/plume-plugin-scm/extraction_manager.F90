@@ -28,6 +28,12 @@ module extraction_manager_mod
     integer(kind=JPIM), allocatable :: ilocs(:)
   end type iloc_bucket
 
+  ! List of time steps at which a particular point should be extracted
+  ! (used only during setup, when parsing the per-point config).
+  type :: step_list
+    integer(kind=JPIM), allocatable :: steps(:)
+  end type step_list
+
   ! Extraction scheduler for the SCM plugin.
   !
   ! At setup time the manager parses, for each configured point:
@@ -71,8 +77,8 @@ contains
     logical            :: found
 
     ! per-point parsed schedule
-    type(iloc_bucket), allocatable :: point_steps(:)
-    logical,           allocatable :: point_always(:)
+    type(step_list), allocatable :: point_steps(:)
+    logical,         allocatable :: point_always(:)
 
     integer(c_int32_t), allocatable :: steps_int32(:)
     integer(c_int32_t)              :: scalar_int32
@@ -123,10 +129,12 @@ contains
           point_always(ipoint) = .true.
           n_always = n_always + 1
         else
-          ! copy into per-point bucket, dropping duplicates
-          call unique_sorted(steps_int32, point_steps(ipoint)%ilocs)
-          if (size(point_steps(ipoint)%ilocs) > 0) then
-            max_step_local = max(max_step_local, maxval(point_steps(ipoint)%ilocs))
+          ! copy step values (kind-convert c_int32_t -> JPIM); duplicates are
+          ! harmless because bucket membership is tested with `any(... == step)`.
+          allocate(point_steps(ipoint)%steps(size(steps_int32)))
+          point_steps(ipoint)%steps(:) = int(steps_int32, kind=JPIM)
+          if (size(point_steps(ipoint)%steps) > 0) then
+            max_step_local = max(max_step_local, maxval(point_steps(ipoint)%steps))
           endif
         endif
         deallocate(steps_int32)
@@ -155,15 +163,15 @@ contains
         count_at = 0
         do ipoint = 1, nb_locations
           if (point_always(ipoint)) cycle
-          if (.not.allocated(point_steps(ipoint)%ilocs)) cycle
-          if (any(point_steps(ipoint)%ilocs == istep)) count_at = count_at + 1
+          if (.not.allocated(point_steps(ipoint)%steps)) cycle
+          if (any(point_steps(ipoint)%steps == istep)) count_at = count_at + 1
         enddo
         allocate(self%buckets(istep)%ilocs(count_at))
         ii = 0
         do ipoint = 1, nb_locations
           if (point_always(ipoint)) cycle
-          if (.not.allocated(point_steps(ipoint)%ilocs)) cycle
-          if (any(point_steps(ipoint)%ilocs == istep)) then
+          if (.not.allocated(point_steps(ipoint)%steps)) cycle
+          if (any(point_steps(ipoint)%steps == istep)) then
             ii = ii + 1
             self%buckets(istep)%ilocs(ii) = ipoint
           endif
@@ -179,8 +187,8 @@ contains
     do ipoint = 1, nb_locations
       if (point_always(ipoint)) then
         write(msg,'(A,I0,A)') "extraction_manager:   point ", ipoint, " -> every step"
-      else if (allocated(point_steps(ipoint)%ilocs)) then
-        call format_int_list(point_steps(ipoint)%ilocs, msg, &
+      else if (allocated(point_steps(ipoint)%steps)) then
+        call format_int_list(point_steps(ipoint)%steps, msg, &
           &                  "extraction_manager:   point ", ipoint)
       else
         write(msg,'(A,I0,A)') "extraction_manager:   point ", ipoint, " -> (no steps requested)"
@@ -190,7 +198,7 @@ contains
 
     ! per-point buffer no longer needed
     do ipoint = 1, nb_locations
-      if (allocated(point_steps(ipoint)%ilocs)) deallocate(point_steps(ipoint)%ilocs)
+      if (allocated(point_steps(ipoint)%steps)) deallocate(point_steps(ipoint)%steps)
     enddo
     deallocate(point_steps)
     deallocate(point_always)
@@ -282,49 +290,6 @@ contains
   ! ------------------------------------------------------------------------
   ! Helpers (module-private)
   ! ------------------------------------------------------------------------
-
-  ! Return a sorted, duplicate-free copy of `input` into the allocatable
-  ! `output`.  Uses an O(n^2) insertion approach; n is typically <= a handful.
-  subroutine unique_sorted(input, output)
-    integer(c_int32_t),              intent(in)    :: input(:)
-    integer(kind=JPIM), allocatable, intent(inout) :: output(:)
-
-    integer(kind=JPIM) :: n_in, i, j, count, tmp
-    integer(kind=JPIM), allocatable :: work(:)
-
-    n_in = size(input)
-    if (n_in == 0) then
-      allocate(output(0))
-      return
-    endif
-
-    allocate(work(n_in))
-    count = 0
-    do i = 1, n_in
-      ! skip duplicates already present
-      if (any(work(1:count) == int(input(i), kind=JPIM))) cycle
-      count = count + 1
-      work(count) = int(input(i), kind=JPIM)
-    enddo
-
-    ! simple insertion sort
-    do i = 2, count
-      tmp = work(i)
-      j = i - 1
-      do while (j >= 1)
-        if (work(j) <= tmp) exit
-        work(j+1) = work(j)
-        j = j - 1
-      enddo
-      work(j+1) = tmp
-    enddo
-
-    allocate(output(count))
-    output(1:count) = work(1:count)
-    deallocate(work)
-
-  end subroutine unique_sorted
-
 
   ! Format a small integer list into a log message string.
   subroutine format_int_list(values, msg, prefix, ipoint)
