@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+# (C) Copyright 2024- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation nor
+# does it submit to any jurisdiction.
+
+# Test: RUN_EVERY step filtering in the SCM plugin
+#
+# The plugin is configured with "RUN_EVERY": 4, so scm_run only executes at
+# simulation steps that are multiples of 4.  The points do NOT specify any
+# "timesteps"/"timestep", so each point is extracted at every step the plugin
+# actually runs.  With APPEND_OUTPUT=0, a distinct file is produced per
+# (point, executed-step) pair.
+#
+# Config (plume-config-ifs-t159-run-every-test.json):
+#   RUN_EVERY = 4
+#   5 points, none with an explicit extraction schedule
+#
+# The driver is run for 16 steps (steps 1 .. 16).  Because the plugin only
+# runs when MOD(NSTEP, 4) == 0, extraction happens ONLY at steps 4, 8, 12, 16.
+# Expected outcome:
+#   each point has files exactly at steps 4, 8, 12, 16 and nowhere else.
+
+set -eux
+
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+bindir=@CMAKE_CURRENT_BINARY_DIR@
+
+input_data_dir=@TEST_DATA_DIR@/input_files_t159
+exedir=@CMAKE_BINARY_DIR@/bin
+configs_dir=@CMAKE_BINARY_DIR@/tests/plugin_configs
+
+tmpdir_tests=@CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_run_every
+
+if [[ ! -e $tmpdir_tests ]]; then
+    mkdir -p $tmpdir_tests
+else
+    echo "Directory $tmpdir_tests already exists. Cleaning output files.."
+    rm -f ${tmpdir_tests}/scm_in_proc_00001_pt_*
+fi
+
+cd $tmpdir_tests
+
+# Symlinks to input data (reuse t159 GRIB files)
+[[ ! -e cld_grib   ]] && ln -s $input_data_dir/cld_grib_t159   cld_grib
+[[ ! -e sfc_grib   ]] && ln -s $input_data_dir/sfc_grib_t159   sfc_grib
+[[ ! -e spec_grib  ]] && ln -s $input_data_dir/spec_grib_t159  spec_grib
+[[ ! -e namelist_1c ]] && ln -s $input_data_dir/namelist_1c_t159 namelist_1c
+
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-""}:@CMAKE_BINARY_DIR@/lib
+export PLUME_CONFIG_FILE=$configs_dir/plume-config-ifs-t159-run-every-test.json
+export PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST=./namelist_1c
+
+# Run the driver for 16 steps (steps 1 .. 16)
+export SCM_PLUGIN_TESTER_N_STEPS=16
+$exedir/scm_plugin_tester
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+check_exists() {
+    local f="$1"
+    if [[ ! -f "$f" ]]; then
+        echo "FAIL: expected output file not found: $f"
+        exit 1
+    fi
+    echo "OK:   expected file present:  $f"
+}
+
+check_absent() {
+    local f="$1"
+    if [[ -f "$f" ]]; then
+        echo "FAIL: unexpected output file found: $f"
+        exit 1
+    fi
+    echo "OK:   file correctly absent:  $f"
+}
+
+proc=00001
+
+# Points 1..5 from plume-config-ifs-t159-run-every-test.json.
+point_ids=(1 2 3 4 5)
+
+# With RUN_EVERY=4 over 16 steps, the plugin executes at these steps only.
+run_every=4
+n_steps=16
+
+for pid in "${point_ids[@]}"; do
+    pid_5d=$(printf "%05d" "$pid")
+
+    echo "Checking point ${pid}"
+
+    for s in $(seq 1 $n_steps); do
+        s_5d=$(printf "%05d" "$s")
+        f="scm_in_proc_${proc}_pt_${pid_5d}_step_${s_5d}.nc"
+        if (( s % run_every == 0 )); then
+            check_exists "$f"
+        else
+            check_absent "$f"
+        fi
+    done
+
+    # In APPEND mode-off there is never a single appended file per point.
+    check_absent "scm_in_proc_${proc}_pt_${pid_5d}.nc"
+done
+
+echo "All RUN_EVERY step-filter checks passed."
