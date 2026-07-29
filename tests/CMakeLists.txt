@@ -188,6 +188,19 @@ if (HAVE_SCM_PLUME_PLUGIN)
             TEST_DEPENDS test_files_t159
         )
 
+        # RUN_EVERY=4: plugin executes only every 4th step; points have no
+        # explicit schedule, so they are extracted at each executed step.
+        ecbuild_configure_file(
+            test_scm_plugin_run_every.sh.in
+            test_scm_plugin_run_every.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE        SCRIPT
+            COMMAND     test_scm_plugin_run_every.sh
+            TEST_DEPENDS test_files_t159
+        )
+
     else()
         message("Double Precision is NOT enabled => test_scm_plugin is NOT built.")
     endif()
