@@ -11,11 +11,9 @@ These options are defined in the top-level [CMakeLists.txt](../../CMakeLists.txt
 |---|---|---|
 | `SCM_TOOLS` | Build the command line tools | `ON` |
 | `SCM_TESTS` | Build SCM tests | `ON` |
-| `ATLAS` | Support for atlas | required for the plugin |
-| `TRANS` | Support for trans | - |
 | `NETCDF` | Support for NetCDF format | `ON` |
 | `OMP` | Enable OpenMP support for SCM-DATA | `OFF` |
-| `SCM_PLUME_PLUGIN` | Build the plume plugin (requires `ATLAS` and `plume`) | `OFF` |
+| `SCM_PLUME_PLUGIN` | Build the plume plugin (requires `plume`; `atlas` is always required) | `OFF` |
 | `SCM_PLUME_PLUGIN_PROFILER` | Enable a simple profiler for the plume plugin (requires `SCM_PLUME_PLUGIN`) | `OFF` |
 | `SCM_GRIB2_FIELDS` | Read soil temperature/moisture/ice-temperature as multi-level fields (`sot`/`vsw`/`sit`) instead of the twelve single-level fields `stl1..4`/`swvl1..4`/`istl1..4` (requires `SCM_PLUME_PLUGIN`) | `ON` |
 | `SINGLE_PRECISION` | Build the SCM tools and the plugin in single precision | `OFF` |

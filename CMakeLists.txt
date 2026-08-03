@@ -21,6 +21,7 @@ ecbuild_enable_fortran( REQUIRED MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/module )
 
 ecbuild_find_package( eccodes REQUIRED )
 ecbuild_find_package( fiat REQUIRED )
+ecbuild_find_package( atlas REQUIRED )
 
 
 # Build command line SCM tools
@@ -32,21 +33,6 @@ ecbuild_add_option( FEATURE SCM_TOOLS
 ecbuild_add_option( FEATURE SCM_TESTS
                     DESCRIPTION "Build SCM tests"
                     DEFAULT ON )
-
-ecbuild_add_option( FEATURE ATLAS
-                    DESCRIPTION "scm: Support for atlas"
-                    REQUIRED_PACKAGES "atlas" )
-if( NOT HAVE_ATLAS )
-    ecbuild_warn( "The scm executables requiring atlas cannot be built")
-endif()
-
-
-ecbuild_add_option( FEATURE TRANS
-                    DESCRIPTION "scm: Support for trans"
-                    REQUIRED_PACKAGES "ectrans" )
-if( NOT HAVE_TRANS )
-    ecbuild_warn( "The scm executables requiring trans cannot be built")
-endif()
 
 #NETCDF
 ecbuild_add_option( FEATURE NETCDF
@@ -67,7 +53,6 @@ ecbuild_add_option( FEATURE OMP
 ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN
                     DESCRIPTION "plume plugin"
                     DEFAULT OFF
-                    CONDITION ENABLE_ATLAS
                     REQUIRED_PACKAGES plume )
 
 # Enables a simple profiler for the plume plugin

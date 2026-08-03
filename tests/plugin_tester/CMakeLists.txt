@@ -51,7 +51,6 @@ ecbuild_add_executable(
 
     LIBS
         atlas_f
-        trans_dp
         fiat
         eccodes_f90
         fckit
