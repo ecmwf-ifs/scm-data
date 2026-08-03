@@ -116,6 +116,10 @@ INTEGER :: RUN_EVERY
 INTEGER :: INIT_STEP
 INTEGER :: FINAL_STEP
 
+! variable to detect an actual change in NSTEP, so that 
+! the plugin is not executed multiple times for the same step
+INTEGER(KIND=JPIM) :: NSTEP_OLD
+
 TYPE(TLOCATION), ALLOCATABLE:: LOCATIONS(:)
 INTEGER(KIND=JPIM) :: NB_LOCATIONS
 
@@ -591,6 +595,15 @@ endif
 if ( (FINAL_STEP.ge.0) .and. (NSTEP.gt.FINAL_STEP) ) then
   return
 endif
+
+! check if NSTEP has changed
+#ifdef WITH_SCM_PLUME_PLUGIN_UNIQUE_STEPS
+if (NSTEP == NSTEP_OLD) then
+  return
+else
+  NSTEP_OLD = NSTEP
+endif
+#endif
 
 call log%info("SCM-PLUGIN executing step..")
 
