@@ -68,6 +68,78 @@ public :: teardown
 contains
 
 
+function parse_step_values(value) result(steps)
+  implicit none
+
+  character(len=*), intent(in) :: value
+  integer, allocatable         :: steps(:)
+
+  integer :: value_length
+  integer :: number_of_steps
+  integer :: character_index
+  integer :: step_index
+  integer :: token_start
+  integer :: token_end
+  integer :: comma_position
+  integer :: read_status
+
+  character(len=:), allocatable :: trimmed_value
+  character(len=:), allocatable :: token
+
+  trimmed_value = trim(value)
+  value_length = len(trimmed_value)
+
+  if (value_length == 0) then
+    error stop "SCM_PLUGIN_TESTER_STEPS must not be empty"
+  endif
+
+  ! Count the comma-separated entries.
+  number_of_steps = 1
+
+  do character_index = 1, value_length
+    if (trimmed_value(character_index:character_index) == ",") then
+      number_of_steps = number_of_steps + 1
+    endif
+  enddo
+
+  allocate(steps(number_of_steps))
+
+  token_start = 1
+
+  do step_index = 1, number_of_steps
+    comma_position = index(trimmed_value(token_start:), ",")
+
+    if (comma_position == 0) then
+      token_end = value_length
+    else
+      token_end = token_start + comma_position - 2
+    endif
+
+    if (token_end < token_start) then
+      error stop "SCM_PLUGIN_TESTER_STEPS contains an empty entry"
+    endif
+
+    token = trim(adjustl(trimmed_value(token_start:token_end)))
+
+    if (len(token) == 0) then
+      error stop "SCM_PLUGIN_TESTER_STEPS contains an empty entry"
+    endif
+
+    read(token, *, iostat=read_status) steps(step_index)
+
+    if (read_status /= 0) then
+      error stop "SCM_PLUGIN_TESTER_STEPS contains an invalid integer"
+    endif
+
+    if (steps(step_index) < 1) then
+      error stop "SCM_PLUGIN_TESTER_STEPS values must be greater than zero"
+    endif
+
+    token_start = token_end + 2
+  enddo
+end function parse_step_values
+
+
 subroutine setup()
 
   type(fckit_configuration) :: requested_data_catalogue
@@ -201,12 +273,8 @@ subroutine run( return_code )
   integer :: ipoint
 
   ! multi-step loop
-  integer :: n_steps
-  integer :: i_step
-  integer :: n_steps_env_status
   integer :: loop_nstep_first
   integer :: loop_nstep_last
-  character(32) :: n_steps_env
 
   character (len=:), allocatable :: plugin_name
   type(fckit_pathname) :: plugin_config_path
@@ -215,6 +283,17 @@ subroutine run( return_code )
 
   REAL(KIND=JPRB) :: PT_LAT
   REAL(KIND=JPRB) :: PT_LON
+
+  ! stepping
+  character(len=1024)  :: steps_env
+  character(len=32)    :: n_steps_env
+  integer              :: steps_env_status
+  integer              :: n_steps_env_status
+  integer              :: n_steps
+  integer              :: i_step
+  ! integer              :: nstep
+  integer, allocatable :: step_values(:)
+
   
 
 #include "rdnam.h"
@@ -349,40 +428,77 @@ subroutine run( return_code )
   call fld_provider%setup(nlev, gridpoints, nodepoints, sfcfields, gpfields, gpfields_from_sp, windfield)
   call fld_provider%provide_fields(data_from_plume)
 
-  ! Determine the range of NSTEP values:
-  ! - If env var SCM_PLUGIN_TESTER_N_STEPS=N is set, loop steps 1..N
-  ! - Otherwise run a single step with NSTEP=999 (backward compatibility)
-  call get_environment_variable("SCM_PLUGIN_TESTER_N_STEPS", n_steps_env, status=n_steps_env_status)
-  if (n_steps_env_status == 0) then
+
+  ! Determine the NSTEP values.
+  !
+  ! Precedence:
+  ! 1. SCM_PLUGIN_TESTER_STEPS="1,3,7" runs the explicitly listed steps.
+  ! 2. SCM_PLUGIN_TESTER_N_STEPS=N runs sequential steps 1..N.
+  ! 3. If neither variable is set, run NSTEP=999 for backward compatibility.
+
+  call get_environment_variable( &
+    "SCM_PLUGIN_TESTER_STEPS", &
+    steps_env, &
+    status=steps_env_status)
+
+  call get_environment_variable( &
+    "SCM_PLUGIN_TESTER_N_STEPS", &
+    n_steps_env, &
+    status=n_steps_env_status)
+
+  if (steps_env_status == 0 .and. len_trim(steps_env) > 0) then
+
+    ! Explicit step values override SCM_PLUGIN_TESTER_N_STEPS.
+    step_values = parse_step_values(steps_env)
+
+  else if (n_steps_env_status == 0 .and. len_trim(n_steps_env) > 0) then
+
     read(n_steps_env, *) n_steps
-    loop_nstep_first = 1
-    loop_nstep_last  = n_steps
+
+    if (n_steps < 1) then
+      error stop "SCM_PLUGIN_TESTER_N_STEPS must be greater than zero"
+    endif
+
+    allocate(step_values(n_steps))
+    step_values = [(i_step, i_step = 1, n_steps)]
+
   else
-    loop_nstep_first = 999
-    loop_nstep_last  = 999
+
+    allocate(step_values(1))
+    step_values(1) = 999
+
   endif
 
-  ! dummy values for TSTEP/INIT_DATE/INIT_TIME (for testing only)
-  tstep      = 0.0
-  init_date  = 20151015
-  init_time  = 12
+  ! Dummy values for TSTEP/INIT_DATE/INIT_TIME (for testing only)
+  tstep     = 0.0
+  init_date = 20151015
+  init_time = 12
+
   call plume_check(data_from_plume%provide_double("TSTEP", tstep))
   call plume_check(data_from_plume%provide_int("INIT_DATE", init_date))
   call plume_check(data_from_plume%provide_int("INIT_TIME", init_time))
 
   INFO%IDATE = INIT_DATE
-  INFO%ITIME = INIT_TIME/3600 ! convert seconds to hours
+  INFO%ITIME = INIT_TIME / 3600  ! Convert seconds to hours.
 
-  ! Register NSTEP data slot with the first step value, then loop over all steps
-  nstep = loop_nstep_first
-  call plume_check( data_from_plume%create_int("NSTEP", nstep) )
+  ! Register NSTEP using the first configured step.
+  nstep = step_values(1)
+
+  call plume_check(data_from_plume%create_int("NSTEP", nstep))
   call plume_check(manager%feed_plugins(data_from_plume))
 
-  do i_step = loop_nstep_first, loop_nstep_last
+  ! Run all configured steps.
+  do i_step = 1, size(step_values)
+    nstep = step_values(i_step)
+
     INFO%DTIME = nstep * tstep
-    call plume_check(data_from_plume%update_int("NSTEP", i_step))
+
+    write (msg,'(A,I0)') "Tester has set NSTEP = ", nstep; call log%info(msg)
+    call plume_check(data_from_plume%update_int("NSTEP", nstep))
     call plume_check(manager%run())
   enddo
+
+  deallocate(step_values)
 
   ! *** this writes the netcdf files as in the original workflow
   call lonlatField%data(lonlat)

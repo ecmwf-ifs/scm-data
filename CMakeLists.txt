@@ -76,7 +76,13 @@ ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_PROFILER
                     DEFAULT OFF
                     CONDITION ENABLE_SCM_PLUME_PLUGIN
                     )
-
+# When ON, the plume plugin skips execution unless NSTEP has changed since the
+# previous call (i.e. it only runs once per unique step).
+ecbuild_add_option( FEATURE SCM_PLUME_PLUGIN_UNIQUE_STEPS
+                    DESCRIPTION "plume plugin: only execute once per unique NSTEP"
+                    DEFAULT ON
+                    CONDITION ENABLE_SCM_PLUME_PLUGIN
+                    )
 # When ON, the plume plugin (and its tester) expect three 4-level input fields
 # (sot=260360, vsw=260199, sit=262024) instead of the twelve single-level fields
 # stl1..stl4, swvl1..swvl4, istl1..istl4. Destination storage PSTL/PSWL/PTIA(ncss=4)
@@ -122,6 +128,11 @@ if (HAVE_SINGLE_PRECISION OR HAVE_PLUME_PLUGINS_SINGLE_PRECISION)
     list(APPEND PLUGINS_DEFINITIONS_sp WITH_SCM_PLUME_PLUGIN_PROFILER)
   endif()
 
+  # also add unique-steps definition if enabled
+  if (HAVE_SCM_PLUME_PLUGIN_UNIQUE_STEPS)
+    list(APPEND PLUGINS_DEFINITIONS_sp WITH_SCM_PLUME_PLUGIN_UNIQUE_STEPS)
+  endif()
+
   set( HAVE_SCM_PLUGIN_sp 1)
 endif()
 
@@ -131,6 +142,11 @@ if (HAVE_PLUME_PLUGINS_DOUBLE_PRECISION)
   # also add profiler definition if plume plugin profiler is enabled
   if (HAVE_SCM_PLUME_PLUGIN_PROFILER)
     list(APPEND PLUGINS_DEFINITIONS_dp WITH_SCM_PLUME_PLUGIN_PROFILER)
+  endif()
+
+  # also add unique-steps definition if enabled
+  if (HAVE_SCM_PLUME_PLUGIN_UNIQUE_STEPS)
+    list(APPEND PLUGINS_DEFINITIONS_dp WITH_SCM_PLUME_PLUGIN_UNIQUE_STEPS)
   endif()
 
   set( HAVE_SCM_PLUGIN_dp 1)

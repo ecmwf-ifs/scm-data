@@ -25,8 +25,21 @@
 #
 # The driver is run for 6 steps.  Expected outcome:
 #   each point has output files ONLY at its configured timesteps.
+#
+# The driver is additionally fed a step sequence with repeated NSTEP values
+# ("1,2,3,3,3,4,5,5,5,5,6,6,6", 13 entries in total). Whether the plugin
+# actually re-executes for a repeated NSTEP depends on the SCM_PLUME_PLUGIN_UNIQUE_STEPS
+# build option (WITH_SCM_PLUME_PLUGIN_UNIQUE_STEPS):
+#   - ON  (default): the plugin skips a step if NSTEP == previous NSTEP,
+#         so it executes exactly once per unique step -> 6 executions.
+#   - OFF: the plugin executes for every entry in the sequence, including
+#         repeated steps -> 13 executions.
+# This is verified by counting the "SCM-PLUGIN executing step.." log lines.
 
-set -eux
+set -euxo pipefail
+
+# Set by cmake from the SCM_PLUME_PLUGIN_UNIQUE_STEPS feature (ON/OFF)
+have_unique_steps="@HAVE_SCM_PLUME_PLUGIN_UNIQUE_STEPS@"
 
 srcdir=@CMAKE_CURRENT_SOURCE_DIR@
 bindir=@CMAKE_CURRENT_BINARY_DIR@
@@ -57,8 +70,27 @@ export PLUME_CONFIG_FILE=$configs_dir/plume-config-ifs-t159-timestep-test.json
 export PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST=./namelist_1c
 
 # Run the driver for 6 steps (steps 1 .. 6)
-export SCM_PLUGIN_TESTER_N_STEPS=6
-$exedir/scm_plugin_tester
+# export SCM_PLUGIN_TESTER_N_STEPS=6
+
+# test with duplicated steps (skipped only if SCM_PLUME_PLUGIN_UNIQUE_STEPS is ON)
+export SCM_PLUGIN_TESTER_STEPS="1,2,3,3,3,4,5,5,5,5,6,6,6"
+runlog=$tmpdir_tests/scm_plugin_tester.log
+$exedir/scm_plugin_tester 2>&1 | tee "$runlog"
+
+# Number of times the plugin actually executed the step logic
+n_executions=$(grep -c "SCM-PLUGIN executing step.." "$runlog")
+
+if [[ "$have_unique_steps" == "1" ]]; then
+    expected_executions=6
+else
+    expected_executions=13
+fi
+
+if [[ "$n_executions" -ne "$expected_executions" ]]; then
+    echo "FAIL: expected $expected_executions plugin executions (SCM_PLUME_PLUGIN_UNIQUE_STEPS=$have_unique_steps), got $n_executions"
+    exit 1
+fi
+echo "OK:   plugin executed $n_executions times as expected (SCM_PLUME_PLUGIN_UNIQUE_STEPS=$have_unique_steps)"
 
 
 # ---------------------------------------------------------------------------
