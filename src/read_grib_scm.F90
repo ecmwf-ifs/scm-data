@@ -106,8 +106,6 @@ REAL(KIND=c_double), POINTER :: fieldsdata(:,:), zdata(:), gribsdata(:)
 REAL(KIND=c_double), POINTER :: locdata(:)
 #endif
 
-#include "dist_grid.h"
-
 IOMASTER=1_JPIM
 ! set to 1 if not to use IOMASTER FOR DECODING
 IO_SHIFT = 0

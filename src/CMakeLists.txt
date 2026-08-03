@@ -28,7 +28,6 @@ if( HAVE_SCM_TOOLS )
 
         LIST( APPEND COMMON_DEP_LIBS
                 atlas_f
-                trans_dp
                 fiat
                 eccodes_f90
                 NetCDF::NetCDF_Fortran
