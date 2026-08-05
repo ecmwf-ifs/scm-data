@@ -135,7 +135,7 @@ INTEGER :: FINAL_STEP
 
 ! variable to detect an actual change in NSTEP, so that 
 ! the plugin is not executed multiple times for the same step
-INTEGER(KIND=JPIM) :: NSTEP_OLD
+INTEGER(KIND=JPIM) :: NSTEP_OLD = -1
 
 TYPE(TLOCATION), ALLOCATABLE:: LOCATIONS(:)
 INTEGER(KIND=JPIM) :: NB_LOCATIONS
@@ -759,28 +759,34 @@ subroutine scm_teardown(plugin_config, model_data)
   call fvm%final()  
 
   do ifield=1,n_fields_srf
-    call fields_srf(n_fields_srf)%final()
+    call fields_srf(ifield)%final()
   enddo
 
   do ifield=1,n_fields_cld
-    call fields_cld(n_fields_cld)%final()
+    call fields_cld(ifield)%final()
   enddo
 
   do ifield=1,n_fields_cld
-    call fields_cld_nodes(n_fields_cld)%final()
+    call fields_cld_nodes(ifield)%final()
   enddo
 
   do ifield=1,n_fields_spc
-    call fields_spc(n_fields_spc)%final()
+    call fields_spc(ifield)%final()
   enddo
 
   do ifield=1,n_fields_spc
-    call fields_spc_nodes(n_fields_spc)%final()
+    call fields_spc_nodes(ifield)%final()
   enddo
 
   do ifield=1,n_fields_oth
-    call fields_oth(n_fields_oth)%final()
+    call fields_oth(ifield)%final()
   enddo
+
+#ifdef WITH_SCM_GRIB2_FIELDS
+  do ifield=1,n_fields_sol
+    call fields_sol(ifield)%final()
+  enddo
+#endif
 
 
   call fields_srf_set%final()
