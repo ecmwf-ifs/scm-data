@@ -702,17 +702,6 @@ STOP_PLUGIN_TIMER("scm_run.update_cld_fields")
 
 START_PLUGIN_TIMER("scm_run.process_plume_fields")
 
-! print cached paramID's
-do ifield=1,size(param_ids_spc)
-  write(msg,'(A,I0,A,I0)') "param_ids_spc(", ifield, ") = ", param_ids_spc(ifield); call log%info(msg)
-enddo
-do ifield=1,size(param_ids_cld)
-  write(msg,'(A,I0,A,I0)') "param_ids_cld(", ifield, ") = ", param_ids_cld(ifield); call log%info(msg)
-enddo
-do ifield=1,size(param_ids_srf)
-  write(msg,'(A,I0,A,I0)') "param_ids_srf(", ifield, ") = ", param_ids_srf(ifield); call log%info(msg)
-enddo
-
 call process_plume_fields(nproc, &
                           myproc, &
                           NSTEP, &
