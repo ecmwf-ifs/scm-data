@@ -180,10 +180,6 @@ do jfld=1,isize
 
   ! loop over field levels
   n_field_levels = field%levels()
-  ! print jfld
-  write(msg,'(A,I0)') "jfld: ", jfld; call log%info(msg)
-  write(msg, '(A,I0)') "size(param_ids_spc_in): ", size(param_ids_spc_in); call log%info(msg)
-  write(msg, '(A,I0)') "param_ids_spc_in(1): ", param_ids_spc_in(1); call log%info(msg)
   iparam = param_ids_spc_in(jfld)  ! PLUME-85: use cached paramId
 
   ! derivatives

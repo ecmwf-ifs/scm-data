@@ -129,7 +129,7 @@ contains
       call SU_WRT_NC(nc_fullpath, pvah, pvbh, dataid, locations(iloc)%IFILE_ID, nlev)
 
       ! write data to the NetCDF file
-      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", info%ISTEP, info%IDATE
+      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", nstep, info%IDATE
       call log%debug(msg)
       call WRT1C_NC(locations(iloc), pvah, pvbh, info, locations(iloc)%IFILE_ID, nlev)
 
