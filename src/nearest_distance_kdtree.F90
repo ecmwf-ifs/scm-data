@@ -127,8 +127,10 @@ loc_index = 1
 do ibatch=1,nb_batches
 
   min_pidx_in_batch = loc_index
-  max_pidx_in_batch = min(min_pidx_in_batch+batch_size, nb_locations)
+  max_pidx_in_batch = min(min_pidx_in_batch+batch_size-1, nb_locations)
   nb_batch_points = max_pidx_in_batch - min_pidx_in_batch + 1
+
+  nearest_dist_batchpts_local = HUGE(1.0e30_jprb)
   nearest_dist_batchpts_local(1:nb_batch_points) = nearest_dist_allpts_local(min_pidx_in_batch:max_pidx_in_batch)
 
   ! all gather the distances for this batch
@@ -137,7 +139,7 @@ do ibatch=1,nb_batches
   ! check min distance across all gathered distances
   do iloc=1,nb_batch_points
     min_rank_for_batch_point = minloc( nearest_dist_batchpts_gathered(iloc:mpi_size*batch_size:batch_size),1 )
-    locations(iloc)%iproc = min_rank_for_batch_point
+    locations(min_pidx_in_batch+iloc-1)%iproc = min_rank_for_batch_point
   enddo
 
   loc_index = loc_index + batch_size
