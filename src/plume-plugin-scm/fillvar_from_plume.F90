@@ -7,16 +7,16 @@
 ! granted to it by virtue of its status as an intergovernmental organisation nor
 ! does it submit to any jurisdiction.
 
-SUBROUTINE FILLVAR_FROM_PLUME(myproc,ilocation, gpfields)
+SUBROUTINE FILLVAR_FROM_PLUME(myproc, ilocation, gpfields, param_ids_in)
 
 use atlas_module
 use yomvar
-use plugin_utils_mod, only : param_name2id
 
 IMPLICIT NONE
 INTEGER(KIND=JPIM), intent(in) :: myproc
 TYPE(TLOCATION), target, intent(inout) :: ilocation
 type(atlas_FieldSet), intent(in) :: gpfields
+INTEGER(KIND=JPIM), intent(in) :: param_ids_in(:)
 
 
 INTEGER(KIND=JPIM) :: IPARAM, JFLD, ISIZE, knode, i
@@ -35,10 +35,10 @@ DO JFLD=1,ISIZE
 
   field = gpfields%field(JFLD)
   metadata = field%metadata()
-  
+
   call field%data(values)
 !   call metadata%get('paramId',iparam)
-  iparam = param_name2id(field%name())
+  iparam = param_ids_in(jfld)  ! PLUME-85: use cached paramId
 
   SELECT CASE (iparam)
   CASE (139)
