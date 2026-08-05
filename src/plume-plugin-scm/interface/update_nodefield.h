@@ -10,7 +10,7 @@
 INTERFACE
 
 
-subroutine update_nodefield_from_field(field, nodepoints, field_nodes)
+subroutine update_nodefield_from_field(field, nodepoints, field_nodes, ghost_mask)
     use, intrinsic :: iso_C_binding
     use atlas_module, only: atlas_real
     use atlas_module, only: atlas_Field
@@ -24,25 +24,27 @@ subroutine update_nodefield_from_field(field, nodepoints, field_nodes)
     type(atlas_Field), intent(in) :: field
     type(atlas_functionspace_NodeColumns), intent(in) :: nodepoints
     type(atlas_Field), intent(inout) :: field_nodes
+    INTEGER(KIND=c_int), intent(in) :: ghost_mask(:)
 
 end subroutine update_nodefield_from_field
 
 
-subroutine update_nodefield_from_fields(fields, nodepoints, field_nodes)
+subroutine update_nodefield_from_fields(fields, nodepoints, field_nodes, ghost_mask)
 
     use, intrinsic :: iso_C_binding
-    
+
     use atlas_module, only: atlas_real
     use atlas_module, only: atlas_Field
     use atlas_module, only: atlas_functionspace_NodeColumns
     use atlas_module, only: atlas_mesh_Nodes
     use yomvar
-    
+
     implicit none
-    
+
     type(atlas_Field), intent(in) :: fields(2)
     type(atlas_functionspace_NodeColumns), intent(in) :: nodepoints
     type(atlas_Field), intent(inout) :: field_nodes
+    INTEGER(KIND=c_int), intent(in) :: ghost_mask(:)
 
 end subroutine update_nodefield_from_fields
 

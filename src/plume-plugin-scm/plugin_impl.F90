@@ -32,6 +32,8 @@ module plugin_impl_mod
   use atlas_module, only: atlas_MatchingPartitioner
   use atlas_module, only: atlas_Grid
   use atlas_module, only: atlas_Interpolation
+  use atlas_module, only: atlas_Nabla
+
   
 
   use fckit_configuration_module, only : fckit_configuration
@@ -44,6 +46,7 @@ module plugin_impl_mod
 
   use scm_nc_output_mod,      only : output_writer
   use extraction_manager_mod, only : extraction_manager
+  use process_plume_fields_mod, only : process_plume_fields
 
   ! Available fields from the plugin
   use plugin_utils_mod, only : n_fields_srf
@@ -62,7 +65,7 @@ module plugin_impl_mod
   use plugin_utils_mod, only : field_names_sol
 #endif
 
-  use plugin_utils_mod, only : param_name2idx, get_vertical_tables_from_namelist
+  use plugin_utils_mod, only : param_name2id, param_name2idx, get_vertical_tables_from_namelist
 
 #ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
   use plugin_profiler_mod
@@ -105,6 +108,20 @@ type(atlas_Field) :: windfield
 type(atlas_Field) :: field_u
 type(atlas_Field) :: field_v
 type(atlas_Field) :: fields_uv(2)
+
+! Nabla operator and gradient fields (created once in scm_setup, reused in scm_run)
+type(atlas_Nabla) :: nabla
+type(atlas_Field) :: grad
+type(atlas_Field) :: grad_one_lev
+type(atlas_Field) :: grad_wind
+
+! Ghost mask (created once in scm_setup, reused in scm_run)
+INTEGER(KIND=c_int), POINTER :: ghost_mask(:) => null()
+
+! Cached paramIds for fields (computed once in scm_setup, read in scm_run) - PLUME-85
+INTEGER(KIND=JPIM), ALLOCATABLE :: param_ids_spc(:)
+INTEGER(KIND=JPIM), ALLOCATABLE :: param_ids_cld(:)
+INTEGER(KIND=JPIM), ALLOCATABLE :: param_ids_srf(:)
 
 type(atlas_fvm_Method) :: fvm
 type(atlas_functionspace_NodeColumns) :: nodepoints
@@ -213,6 +230,8 @@ subroutine scm_setup(plugin_config, model_data)
 
   character(1024) :: vtable_testing_namelist
   integer :: vtable_testing_namelist_status
+
+  type(atlas_Field) :: fieldtemp
 
 #ifdef WITH_SCM_SINGLE_PRECISION  
   REAL(KIND=c_float), POINTER :: dummy_data(:,:)
@@ -460,7 +479,24 @@ subroutine scm_setup(plugin_config, model_data)
   do ifield=1,size(fields_oth)
     call fields_oth_set%add( fields_oth(ifield) )
   enddo
-  
+
+  ! PLUME-85: Cache paramIds for fields to avoid string comparison lookups in scm_run
+  allocate(param_ids_spc(size(fields_spc)))
+  do ifield=1,size(fields_spc)
+    param_ids_spc(ifield) = param_name2id(fields_spc(ifield)%name())
+  enddo
+
+  allocate(param_ids_cld(size(fields_cld)))
+  do ifield=1,size(fields_cld)
+    param_ids_cld(ifield) = param_name2id(fields_cld(ifield)%name())
+  enddo
+
+  allocate(param_ids_srf(fields_srf_set%size()))
+  do ifield=1,fields_srf_set%size()
+    fieldtemp = fields_srf_set%field(ifield)
+    param_ids_srf(ifield) = param_name2id(fieldtemp%name())
+  enddo
+
   ! allocate and initialise location columns
   do iloc=1, nb_locations
     if( myproc == locations(iloc)%iproc ) then
@@ -502,6 +538,17 @@ fields_uv(1) = field_u
 fields_uv(2) = field_v
 windfield = nodepoints%create_field(name="wind", levels=field_u%levels(), kind=atlas_real(JPRB), variables=2)
 
+! create Nabla operator and gradient fields (PLUME-85: reuse across timesteps)
+nabla = atlas_Nabla(fvm)
+grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB), levels=nlev, variables=2)
+grad_one_lev = nodepoints%create_field(name="grad_one_lev", kind=atlas_real(JPRB), levels=1, variables=2)
+grad_wind = nodepoints%create_field(name="gradwind", kind=atlas_real(JPRB), levels=nlev, variables=4)
+
+! cache the ghost mask (PLUME-85: avoid refetching per-field in scm_run)
+! allocate(ghost_mask(nb_nodes))
+ghostField = nodes%ghost()
+call ghostField%data(ghost_mask)
+call ghostField%final()
 
 ! finalisation
 call input_fs%final()
@@ -610,7 +657,7 @@ call log%info("SCM-PLUGIN executing step..")
 if (.not.larea) then
     do iloc=1, nb_locations
       if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, NSTEP) ) then
-        call fillvar_from_plume(myproc, locations(iloc), fields_srf_set)
+        call fillvar_from_plume(myproc, locations(iloc), fields_srf_set, param_ids_srf)
       endif
     enddo
 endif
@@ -618,23 +665,35 @@ endif
 ! update all the SP fields into nodepoints
 START_PLUGIN_TIMER("scm_run.update_sp_fields")
 do ifield=1,fields_spc_set%size()
-  call update_nodefield_from_field(fields_spc(ifield), nodepoints, fields_spc_nodes(ifield))
+  call update_nodefield_from_field(fields_spc(ifield), nodepoints, fields_spc_nodes(ifield), ghost_mask)
 enddo
 STOP_PLUGIN_TIMER("scm_run.update_sp_fields")
 
 ! update the windfield on nodepoints
 START_PLUGIN_TIMER("scm_run.update_wind_field")
-call update_nodefield_from_fields(fields_uv, nodepoints, windfield)
+call update_nodefield_from_fields(fields_uv, nodepoints, windfield, ghost_mask)
 STOP_PLUGIN_TIMER("scm_run.update_wind_field")
 
 ! update all the CLD fields into nodepoints
 START_PLUGIN_TIMER("scm_run.update_cld_fields")
 do ifield=1,fields_cld_set%size()
-  call update_nodefield_from_field(fields_cld(ifield),nodepoints,fields_cld_nodes(ifield))  
+  call update_nodefield_from_field(fields_cld(ifield),nodepoints,fields_cld_nodes(ifield), ghost_mask)
 enddo
 STOP_PLUGIN_TIMER("scm_run.update_cld_fields")
 
 START_PLUGIN_TIMER("scm_run.process_plume_fields")
+
+! print cached paramID's
+do ifield=1,size(param_ids_spc)
+  write(msg,'(A,I0,A,I0)') "param_ids_spc(", ifield, ") = ", param_ids_spc(ifield); call log%info(msg)
+enddo
+do ifield=1,size(param_ids_cld)
+  write(msg,'(A,I0,A,I0)') "param_ids_cld(", ifield, ") = ", param_ids_cld(ifield); call log%info(msg)
+enddo
+do ifield=1,size(param_ids_srf)
+  write(msg,'(A,I0,A,I0)') "param_ids_srf(", ifield, ") = ", param_ids_srf(ifield); call log%info(msg)
+enddo
+
 call process_plume_fields(nproc, &
                           myproc, &
                           NSTEP, &
@@ -649,7 +708,13 @@ call process_plume_fields(nproc, &
                           gpfields_from_sp, &
                           gridpoints, &
                           gpfields_cld_nodes, &
-                          extract_mgr)
+                          extract_mgr, &
+                          nabla, &
+                          grad, &
+                          grad_one_lev, &
+                          grad_wind, &
+                          param_ids_spc, &
+                          param_ids_cld)
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 
@@ -730,6 +795,17 @@ subroutine scm_teardown(plugin_config, model_data)
   call field_v%final()
   call fields_uv(1)%final()
   call fields_uv(2)%final()
+
+  call nabla%final()
+  call grad%final()
+  call grad_one_lev%final()
+  call grad_wind%final()
+
+  ! if (allocated(ghost_mask)) deallocate(ghost_mask)
+
+  if (allocated(param_ids_spc)) deallocate(param_ids_spc)
+  if (allocated(param_ids_cld)) deallocate(param_ids_cld)
+  if (allocated(param_ids_srf)) deallocate(param_ids_srf)
 
   call fvm%final()
   call nodepoints%final()
