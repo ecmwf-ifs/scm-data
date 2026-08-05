@@ -302,6 +302,9 @@ subroutine scm_setup(plugin_config, model_data)
 
   ! read parameters from plugin-core configuration
   found = plugin_config%get("LPROGNOSTIC", LPROGNOSTIC_INT)
+  if (.not.found) then
+    LPROGNOSTIC_INT = 1
+  endif
   if (LPROGNOSTIC_INT == 1) then
     LPROGNOSTIC = .true.
   else
@@ -309,6 +312,9 @@ subroutine scm_setup(plugin_config, model_data)
   endif
   
   found = plugin_config%get("LAREA", LAREA_INT)
+  if (.not.found) then
+    LAREA_INT = 0
+  endif
   if (LAREA_INT == 1) then
     LAREA = .true.
   else
@@ -319,6 +325,10 @@ subroutine scm_setup(plugin_config, model_data)
   found = plugin_config%get("RUN_EVERY", RUN_EVERY)
   if (.not.found) then
     RUN_EVERY = 1
+  endif
+  if (RUN_EVERY < 1) then
+    write(msg,'(A,I0)') "RUN_EVERY must be >= 1, but is ", RUN_EVERY; call log%error(msg)
+    stop 1
   endif
 
   ! Plugin initial step
@@ -335,6 +345,9 @@ subroutine scm_setup(plugin_config, model_data)
 
   ! ID of data
   found = plugin_config%get("DATAID", dataid)
+  if (.not.found) then
+    dataid = "plume-plugin-scm"
+  endif
 
   ! max radius of search for nearest grid point
   found_delta = plugin_config%get("DELTA", ZDELTA)
@@ -351,6 +364,12 @@ subroutine scm_setup(plugin_config, model_data)
 
   ! point coordinates
   found = plugin_config%get("points", plugin_config_points)
+  ! if no points are specified, then the plugin will not run
+  if (.not.found) then
+    write(msg,'(A)') "No points specified in plugin configuration, plugin will not run"; call log%info(msg)
+    nb_locations = 0
+    stop 1
+  endif
   nb_locations = size(plugin_config_points)
 
   allocate(locations(nb_locations))
