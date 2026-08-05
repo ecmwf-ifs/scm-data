@@ -7,6 +7,16 @@
 ! granted to it by virtue of its status as an intergovernmental organisation nor
 ! does it submit to any jurisdiction.
 
+module process_plume_fields_mod
+
+  implicit none
+
+  private
+
+  public :: process_plume_fields
+
+contains
+
 subroutine process_plume_fields(nproc, &
                                 myproc, &
                                 kstep, &
@@ -21,7 +31,13 @@ subroutine process_plume_fields(nproc, &
                                 gpfields_from_sp, &
                                 gridpoints, &
                                 gpfields, &
-                                extract_mgr)
+                                extract_mgr, &
+                                nabla_in, &
+                                grad_in, &
+                                grad_one_lev_in, &
+                                grad_wind_in, &
+                                param_ids_spc_in, &
+                                param_ids_cld_in)
 
 ! * calculates horizontal gradients of z, T and q
 !    are used in the pressure gradient force to get the geostrophic wind
@@ -65,6 +81,12 @@ type(atlas_FieldSet),intent(in) :: gpfields_from_sp
 type(atlas_functionspace_StructuredColumns), intent(in) :: gridpoints
 type(atlas_FieldSet),intent(in) :: gpfields
 type(extraction_manager), intent(in) :: extract_mgr
+type(atlas_Nabla), intent(inout) :: nabla_in
+type(atlas_Field), intent(inout) :: grad_in
+type(atlas_Field), intent(inout) :: grad_one_lev_in
+type(atlas_Field), intent(inout) :: grad_wind_in
+INTEGER(KIND=JPIM), intent(in) :: param_ids_spc_in(:)
+INTEGER(KIND=JPIM), intent(in) :: param_ids_cld_in(:)
 
 INTEGER(KIND=JPIM) :: jlev
 INTEGER(KIND=JPIM) :: n_field_levels
@@ -75,10 +97,6 @@ INTEGER(KIND=JPIM) :: ilev
 INTEGER(KIND=JPIM) :: isize
 INTEGER(KIND=JPIM) :: iloc
 
-type(atlas_Nabla) :: nabla
-type(atlas_Field) :: grad
-type(atlas_Field) :: grad_one_lev ! special case (1 lvl only)
-type(atlas_Field) :: grad_wind
 type(atlas_Field) :: field
 type(atlas_Metadata) :: metadata
 
@@ -144,15 +162,10 @@ zdeg2rad= zpi/180._jprb
 
 !! calculate wind + derivatives
 START_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
-nabla = atlas_Nabla(fvm)
-grad_wind = nodepoints%create_field(name="gradwind",kind=atlas_real(JPRB),levels=klev,variables=4) ! 4 vars = 2x2 matrix
 call nodepoints%halo_exchange(windfield)
-call nabla%gradient(windfield,grad_wind)
-call grad_wind%data(grad_wind_data)
+call nabla_in%gradient(windfield,grad_wind_in)
+call grad_wind_in%data(grad_wind_data)
 call windfield%data(wind)
-
-grad = nodepoints%create_field(name="grad", kind=atlas_real(JPRB),levels=klev, variables=2)
-grad_one_lev = nodepoints%create_field(name="grad_one_lev", kind=atlas_real(JPRB),levels=1, variables=2)
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
 
 ! scalar gp from sp
@@ -161,19 +174,23 @@ isize = gpfields_from_sp%size()
 do jfld=1,isize
   field = gpfields_from_sp%field(jfld)
   metadata = field%metadata()
-  
+
   ! call field%data(values)
   call field%data(values_plume_fields)
 
   ! loop over field levels
   n_field_levels = field%levels()
-  iparam = param_name2id(field%name())
+  ! print jfld
+  write(msg,'(A,I0)') "jfld: ", jfld; call log%info(msg)
+  write(msg, '(A,I0)') "size(param_ids_spc_in): ", size(param_ids_spc_in); call log%info(msg)
+  write(msg, '(A,I0)') "param_ids_spc_in(1): ", param_ids_spc_in(1); call log%info(msg)
+  iparam = param_ids_spc_in(jfld)  ! PLUME-85: use cached paramId
 
   ! derivatives
   if ( iparam == 130 ) then
     call nodepoints%halo_exchange(field)
-    call nabla%gradient(field,grad)
-    call grad%data(grad_data)
+    call nabla_in%gradient(field,grad_in)
+    call grad_in%data(grad_data)
   endif
 
   ! special case for sp and geopotential
@@ -182,8 +199,8 @@ do jfld=1,isize
     call nodepoints%halo_exchange(field)
 
     if ( field%levels() == 1 ) then
-      call nabla%gradient(field,grad_one_lev)
-      call grad_one_lev%data(grad_data)
+      call nabla_in%gradient(field,grad_one_lev_in)
+      call grad_one_lev_in%data(grad_data)
     else
       write(msg,'(A,A,A)') " ERROR: field ", field%name(), " has more than 1 level, but should have only 1 level!" ; call log%error(msg)
     endif
@@ -241,13 +258,13 @@ do jfld=1,isize
 
   ! loop over field levels
   n_field_levels = field%levels()
-  iparam = param_name2id(field%name())
+  iparam = param_ids_cld_in(jfld)  ! PLUME-85: use cached paramId
 
   ! derivatives
   if ( iparam == 133 .or. iparam ==  75 .or. iparam == 76 .or. iparam == 246 .or. iparam == 247 .or. iparam == 248 ) then
     call nodepoints%halo_exchange(field)
-    call nabla%gradient(field, grad)    
-    call grad%data(grad_data)
+    call nabla_in%gradient(field, grad_in)
+    call grad_in%data(grad_data)
   endif
 
   ! fill values
@@ -368,10 +385,6 @@ enddo
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.fill_locations")
 
 START_PLUGIN_TIMER("scm_run.process_plume_fields.finalise_fields")
-call nabla%final()
-call grad%final()
-call grad_one_lev%final()
-call grad_wind%final()
 call field%final()
 call metadata%final()
 
@@ -379,3 +392,5 @@ nullify(PX)
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.finalise_fields")
 
 end subroutine process_plume_fields
+
+end module process_plume_fields_mod
