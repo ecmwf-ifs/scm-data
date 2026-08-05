@@ -200,11 +200,12 @@ ITEST(:) = MYPROC
 
 IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
+  ISEND=1
+  IMAXFLDS = MAX(NPROC,1)
+
   write(*,*) 'number of fields :', NFIELDS/JMAX + 1 , NFIELDS, IMAXREC
   write(*,*) "ISIZE:",  ISIZE
   write(*,*) "IMAXFLDS: ", IMAXFLDS
-  ISEND=1
-  IMAXFLDS = MAX(NPROC,1)
 
   ! sending
   IF( MYPROC == IOMASTER ) THEN
