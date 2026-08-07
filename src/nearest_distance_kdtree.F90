@@ -16,6 +16,12 @@ use fckit_log_module, only : log
 
 use yomvar, only: jpim, jprb, tlocation
 
+#ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
+use plugin_profiler_mod
+#endif
+
+#include "profiler_macros.h"
+
 implicit none
 
 integer(jpim), intent(in) :: nb_nodes
@@ -83,6 +89,7 @@ do jnode = 1,nb_non_ghost_nodes
 enddo
 
 ! Geometry and KDTree setup
+START_PLUGIN_TIMER("scm_setup.nearest_distance.kdtree_build")
 geometry = atlas_Geometry("UnitSphere")
 kdtree = atlas_IndexKDTree(geometry)
 call kdtree%reserve(nb_non_ghost_nodes)
@@ -94,9 +101,11 @@ end do
 
 ! Build the KDTree
 call kdtree%build()
+STOP_PLUGIN_TIMER("scm_setup.nearest_distance.kdtree_build")
 
 
 ! Find the closest (local) point for each location
+START_PLUGIN_TIMER("scm_setup.nearest_distance.kdtree_query")
 allocate(nearest_dist_allpts_local(nb_locations))
 do iloc=1, nb_locations
   plonlat(1) = locations(iloc)%rloni_user
@@ -110,9 +119,11 @@ do iloc=1, nb_locations
   locations(iloc)%rloni = lonlat(1,nearest_idx)
   locations(iloc)%rlati = lonlat(2,nearest_idx)
 enddo
+STOP_PLUGIN_TIMER("scm_setup.nearest_distance.kdtree_query")
 
 
 ! Split the locations in batches
+START_PLUGIN_TIMER("scm_setup.nearest_distance.allgather")
 batch_size = 100
 nb_batches = nb_locations / batch_size
 if (mod(nb_locations, batch_size) /= 0) then
@@ -144,6 +155,7 @@ do ibatch=1,nb_batches
 
   loc_index = loc_index + batch_size
 enddo
+STOP_PLUGIN_TIMER("scm_setup.nearest_distance.allgather")
 ! ========================================================================
 
 call kdtree%final()

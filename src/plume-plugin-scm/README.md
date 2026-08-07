@@ -14,7 +14,7 @@ These options are defined in the top-level [CMakeLists.txt](../../CMakeLists.txt
 | `NETCDF` | Support for NetCDF format | `ON` |
 | `OMP` | Enable OpenMP support for SCM-DATA | `OFF` |
 | `SCM_PLUME_PLUGIN` | Build the plume plugin (requires `plume`; `atlas` is always required) | `OFF` |
-| `SCM_PLUME_PLUGIN_PROFILER` | Enable a simple profiler for the plume plugin (requires `SCM_PLUME_PLUGIN`) | `OFF` |
+| `SCM_PLUME_PLUGIN_PROFILER` | Enable the plugin profiler (requires `SCM_PLUME_PLUGIN`). See [Profiling](#profiling) | `OFF` |
 | `SCM_GRIB2_FIELDS` | Read soil temperature/moisture/ice-temperature as multi-level fields (`sot`/`vsw`/`sit`) instead of the twelve single-level fields `stl1..4`/`swvl1..4`/`istl1..4` (requires `SCM_PLUME_PLUGIN`) | `ON` |
 | `SINGLE_PRECISION` | Build the SCM tools and the plugin in single precision | `OFF` |
 | `PLUME_PLUGINS_SINGLE_PRECISION` | Build the plugin variant for single precision fields | `OFF` |
@@ -107,3 +107,71 @@ Extracting data from a few points, each one only at specific time steps:
     ]
 }
 ```
+
+## Profiling
+
+Build with `-DENABLE_SCM_PLUME_PLUGIN_PROFILER=ON` to compile in the plugin profiler.
+When the option is `OFF` the instrumentation macros expand to nothing, so there is no
+runtime cost and no profiler symbol is referenced.
+
+Regions are named with a dot-separated path (`scm_run.process_plume_fields.gradients_sp.halo`)
+which the report renders as a tree. At the end of `scm_teardown` a table is written to the
+fckit log on rank 0, prefixed `[SCM-TIMER]`:
+
+| Column | Meaning |
+|---|---|
+| `Region` | leaf name, indented by nesting depth |
+| `Calls` | number of times the region was entered, summed over ranks |
+| `Self` | `Total` minus the time spent in nested regions, i.e. time unaccounted for by children (per-rank mean) |
+| `Total` | inclusive time in the region (per-rank mean) |
+| `%Tot` | `Total` as a percentage of the sum of the root regions |
+| `Min` / `Max` | smallest / largest `Total` across ranks |
+| `Imbal` | `Max / Total`; 1.0 means perfectly balanced |
+| `MaxRk` | the rank holding `Max`, i.e. the straggler |
+
+`Min` and `Max` are taken across ranks per region independently, so they do **not** add up
+across the tree — only `Total` and `Self` do.
+
+`print_timers` is collective on the plugin communicator: every rank must reach the end of
+`scm_teardown`. The list of regions is taken from rank 0 and broadcast, so ranks that
+registered a different set of regions cannot deadlock the reduction; any region missing
+from rank 0's list is reported as a warning instead of being silently dropped.
+
+Unbalanced instrumentation (a stop without a matching start, a region left open at report
+time, regions closed out of order) is reported as a `[SCM-TIMER]` warning rather than being
+folded into the numbers.
+
+Timing uses the intrinsic `SYSTEM_CLOCK`, so the profiler has no dependency on fiat's
+`timef`. In addition, each region opens an `atlas_Trace` of the same name. Running with
+`ATLAS_TRACE_REPORT=1` therefore yields atlas' own nested report as well, in which the
+atlas-internal costs (`halo_exchange`, `nabla`, mesh generation) appear underneath the
+plugin regions.
+
+### Adding a timer
+
+Include the macros and use the name-based API for coarse regions:
+
+```fortran
+#include "profiler_macros.h"
+...
+START_PLUGIN_TIMER("scm_run.my_region")
+call do_something()
+STOP_PLUGIN_TIMER("scm_run.my_region")
+```
+
+Inside a loop, use the handle-based API instead so the name lookup stays out of the
+measured region. Register the name outside any rank-dependent branch, so that all ranks
+end up with the same set of regions:
+
+```fortran
+DECLARE_PLUGIN_TIMER(ih_mine)          ! declaration section
+...
+REGISTER_PLUGIN_TIMER(ih_mine, "scm_run.my_region.inner")
+do jfld = 1, nfields
+  START_PLUGIN_TIMER_H(ih_mine)
+  call do_something(jfld)
+  STOP_PLUGIN_TIMER_H(ih_mine)
+enddo
+```
+
+Every path out of a timed region must stop it, including early `return`s.
