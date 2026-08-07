@@ -520,6 +520,8 @@ end subroutine run
 
 
 subroutine teardown()
+  call plume_check(manager%finalise())
+  write(*,*) "teardown finished"
 end subroutine teardown
 
 end module testing_model_mod
@@ -556,9 +558,13 @@ program testing_model
     call run(return_code)
     call teardown()
 
-    IF( NPROC > 1 ) call mpl_end()
+    IF( NPROC > 1 ) then
+        call mpl_end()
+        write(*,*) "mpl_end() finished"
+    endif
     
     call atlas_library%finalise()
+    write(*,*) "atlas_library%finalise() finished"
     
     if( return_code /= 0 ) then 
         STOP 1

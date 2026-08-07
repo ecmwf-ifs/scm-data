@@ -18,6 +18,7 @@ SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
 !                       .FALSE. if one or more points, via its coordinates
 
 use, intrinsic :: iso_C_binding
+use, intrinsic :: iso_fortran_env, only : int64
 
 use fckit_log_module, only : log
 
@@ -30,6 +31,8 @@ use atlas_module, only : atlas_real
 
 USE GRIB_API, only : GRIB_READ_FROM_FILE
 USE GRIB_API, only : GRIB_NEW_FROM_MESSAGE
+USE GRIB_API, only : GRIB_NEW_FROM_FILE
+USE GRIB_API, only : GRIB_GET_MESSAGE_SIZE
 USE GRIB_API, only : GRIB_GET
 USE GRIB_API, only : GRIB_GET_SIZE
 USE GRIB_API, only : GRIB_RELEASE
@@ -92,7 +95,16 @@ INTEGER(KIND=JPIM), ALLOCATABLE :: IGRIBUF(:), IRECBUF(:), ISENDREQ(:)
 INTEGER(KIND=JPIM), ALLOCATABLE :: ILENSEND(:), IOFFSEND(:), IBYTES(:), NGSTA(:)
 INTEGER(KIND=JPIM) :: IOFF, ICOUNT, ISEND, ISIZEBUF, NFIELDS, ILEN_BYTES, ILRECV, IMAXFLDS, ISIZE, IMAXREC
 INTEGER(KIND=JPIM) :: IOMASTER, IO_SHIFT, IO
-LOGICAL :: LLFIRST 
+LOGICAL :: LLFIRST
+
+! Exact GRIB record lengths, in 4-byte words, obtained by pre-scanning the file.
+! The receive and staging buffers are sized from these rather than from an assumed
+! worst-case grid size: the old ISIZE-based sizing reserved the full maximum global
+! grid (~52 MB) for EVERY record, which both wasted gigabytes and overflowed the
+! 32-bit product IMAXREC*ISIZE once a rank owned 164 or more records.
+INTEGER(KIND=JPIM), ALLOCATABLE :: ILENWORDS(:)
+INTEGER(KIND=JPIM) :: IGRIB_SCAN, IFI_SCAN, IMSGBYTES, IMAXWORDS
+INTEGER(KIND=int64) :: IRECWORDS, IGRIBWORDS
 
 LOGICAL, ALLOCATABLE :: LLTYPE(:,:), LLSPECTRAL(:)
 
@@ -151,15 +163,62 @@ IF( NFIELDS > 0 ) THEN
   ALLOCATE(ITEST(JMAX))
   ALLOCATE(IMAXF(JMAX))
   IOPROC(:) = -1
+  ! On every rank: the buffer sizing below needs the record lengths, not just the master.
+  ALLOCATE(IBYTES(NFIELDS))
+  ALLOCATE(ILENWORDS(NFIELDS))
+  IBYTES(:) = 0
 ELSE
   write(*,*) ' error reading file: ', TRIM(FILE)
   CALL EXIT(1)
 ENDIF
 
+! Pre-scan the file for the exact length of every message. This is cheap (eccodes
+! only parses the message header) and lets the buffers below be sized from what the
+! data actually needs. A separate file handle is used so the position of IFI, which
+! the main READ loop below reads from, is left untouched.
+IF( MYPROC == IOMASTER ) THEN
+  CALL GRIB_OPEN_FILE(IFI_SCAN, TRIM(FILE), 'R')
+  DO IFLDS=1,NFIELDS
+    IGRIB_SCAN = -1
+    CALL GRIB_NEW_FROM_FILE(IFI_SCAN, IGRIB_SCAN, IRET)
+    IF( IRET /= GRIB_SUCCESS ) THEN
+      write(*,*) ' error pre-scanning message ', IFLDS, ' of ', TRIM(FILE), ' iret=', IRET
+      CALL EXIT(1)
+    ENDIF
+    CALL GRIB_GET_MESSAGE_SIZE(IGRIB_SCAN, IMSGBYTES)
+    IBYTES(IFLDS) = IMSGBYTES
+    CALL GRIB_RELEASE(IGRIB_SCAN)
+  ENDDO
+  CALL GRIB_CLOSE_FILE(IFI_SCAN)
+ENDIF
+
+IF( NPROC > 1 ) THEN
+  CALL MPL_BROADCAST(IBYTES,KROOT=IOMASTER,KTAG=ITAG+1, CDSTRING='GRIB_SIZES:')
+ENDIF
+
+! byte length -> 4-byte word length, rounded up (matches ILENSEND in the READ loop)
+DO IFLDS=1,NFIELDS
+  ILENWORDS(IFLDS) = (IBYTES(IFLDS)+4-1)/4
+ENDDO
+IMAXWORDS = MAXVAL(ILENWORDS(1:NFIELDS))
+
 IF( LSINGLE ) THEN
   IOPROC(:) = 1
   IOTAG(:) = ITAG + 1
   IOROOT(:) =  1
+  ! All records land on proc 1. IMAXREC and IFIELD are read further down (buffer
+  ! sizing, and the DECODE loop) so they must be set here too; they used to be left
+  ! undefined on this branch.
+  IMAXF(:) = 0
+  IF( MYPROC == 1 ) THEN
+    IMAXF(1) = NFIELDS
+    IMAXREC  = NFIELDS
+    DO IFLDS=1, NFIELDS
+      IFIELD(IFLDS,1) = IFLDS
+    ENDDO
+  ELSE
+    IMAXREC = 0
+  ENDIF
 ELSE
   DO J=1, JMAX
      IOPROC(J) = J + IO_SHIFT
@@ -209,10 +268,17 @@ IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
   ! sending
   IF( MYPROC == IOMASTER ) THEN
-    ALLOCATE(IGRIBUF(ISIZE*IMAXFLDS))
+    ! Staging buffer for the messages read from file: IMAXFLDS in flight, each at
+    ! most IMAXWORDS long. Previously ISIZE*IMAXFLDS, i.e. the worst-case global
+    ! grid per slot regardless of the actual message sizes.
+    IGRIBWORDS = INT(IMAXWORDS,int64) * INT(IMAXFLDS,int64)
+    IF( IGRIBWORDS > INT(HUGE(1_JPIM),int64) ) THEN
+      write(*,*) ' GRIB staging buffer too large for 32-bit indexing: ', IGRIBWORDS
+      CALL EXIT(1)
+    ENDIF
+    ALLOCATE(IGRIBUF(IGRIBWORDS))
     ISIZEBUF=SIZE(IGRIBUF)
     ALLOCATE(ISENDREQ(NFIELDS+1))
-    ALLOCATE(IBYTES(NFIELDS))
     ALLOCATE(ILENSEND(NFIELDS+1))
     ALLOCATE(IOFFSEND(NFIELDS+1))
     IOFFSEND(1)=0
@@ -220,7 +286,19 @@ IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
   ! receiving
   IF( ANY(ITEST .EQ. IOPROC) ) THEN
-    ALLOCATE(IRECBUF(IMAXREC*ISIZE))
+    ! Exactly the space the records owned by this rank need, summed from the
+    ! pre-scanned lengths. NGSTA indexes into this buffer, so the two must agree.
+    IRECWORDS = 0_int64
+    DO JFLD=1, IMAXREC
+      IRECWORDS = IRECWORDS + INT(ILENWORDS(IFIELD(JFLD,MYPROC)),int64)
+    ENDDO
+    IF( IRECWORDS > INT(HUGE(1_JPIM),int64) ) THEN
+      ! NGSTA accumulates the running offset in JPIM (32-bit); refuse rather than wrap.
+      write(*,*) ' GRIB receive buffer too large for 32-bit indexing: ', IRECWORDS
+      CALL EXIT(1)
+    ENDIF
+    write(*,*) "IRECBUF words / MB: ", IRECWORDS, REAL(IRECWORDS,JPRB)*4.0_JPRB/1048576.0_JPRB
+    ALLOCATE(IRECBUF(IRECWORDS))
     ALLOCATE(NGSTA(IMAXREC+1))
     NGSTA(1) = 1_JPIM
     NGSTA(2:) = -HUGE(ISIZE)
@@ -232,8 +310,10 @@ IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
     IF( MYPROC == IOMASTER ) THEN
 
-!      ILEN_BYTES = (ISIZEBUF-IOFFSEND(ISEND))*4
-      ILEN_BYTES = ISIZEBUF*4
+      ! Space actually remaining from the offset we hand to eccodes. Passing the
+      ! full ISIZEBUF*4 here let eccodes write past the end of IGRIBUF whenever
+      ! IOFFSEND(ISEND) was non-zero.
+      ILEN_BYTES = (ISIZEBUF-IOFFSEND(ISEND))*4
       CALL GRIB_READ_FROM_FILE(IFI,IGRIBUF(IOFFSEND(ISEND)+1:),ILEN_BYTES,IRET)
       if( iret == -3 ) then
         write(*,*) 'wrong buffer size iret= ', iret
@@ -259,13 +339,37 @@ IF( ANY(ITEST .EQ. IOPROC) .OR. MYPROC == IOMASTER ) THEN
 
     IF ( IOROOT(IFLDS) ==  MYPROC ) THEN
       ICOUNT=ICOUNT+1
+
+      ! Guards on the receive buffer. Both branches below write ILENWORDS(IFLDS)
+      ! words at NGSTA(ICOUNT); if the sizing above were ever wrong again, fail
+      ! here with a diagnostic instead of scribbling off the end of the array.
+      IF( ICOUNT+1 > SIZE(NGSTA) ) THEN
+        write(*,*) ' more records received than expected: ICOUNT=', ICOUNT, &
+         & ' SIZE(NGSTA)=', SIZE(NGSTA), ' IMAXREC=', IMAXREC
+        CALL EXIT(1)
+      ENDIF
+      IF( NGSTA(ICOUNT)+ILENWORDS(IFLDS)-1 > SIZE(IRECBUF) ) THEN
+        write(*,*) ' GRIB receive buffer overflow at record ', IFLDS, &
+         & ' start=', NGSTA(ICOUNT), ' words=', ILENWORDS(IFLDS), &
+         & ' SIZE(IRECBUF)=', SIZE(IRECBUF)
+        CALL EXIT(1)
+      ENDIF
+
       IF( MYPROC /= IOMASTER ) THEN
         CALL MPL_RECV(IRECBUF(NGSTA(ICOUNT):),KSOURCE=IOMASTER,KTAG=IOTAG(IFLDS), &
          & KOUNT=ILRECV,KMP_TYPE=JP_BLOCKING_STANDARD,CDSTRING='RECV FIELDS')
- !       write(*,*) 'recv: ', ICOUNT, ILRECV,  MYPROC, IOTAG(IFLDS)
+        write(*,*) 'recv: ', ICOUNT, ILRECV,  MYPROC, IOTAG(IFLDS)
       ELSE
         ILRECV=ILENSEND(ISEND-1)
-        IRECBUF(NGSTA(ICOUNT):NGSTA(ICOUNT)+ILRECV-1) = IGRIBUF(IOFF+1:IOFF+ILENSEND(ISEND-1))
+        write(*,*) 'recv: ', ICOUNT, ILRECV,  MYPROC, IFLDS
+        ! Explicit loop instead of an array-section assignment: the section-to-
+        ! section copy makes the compiler (at -O0/DEBUG, where it cannot prove
+        ! IRECBUF and IGRIBUF do not overlap) build a stack array temporary sized
+        ! by ILRECV, which can overflow the stack. A scalar loop copies in place
+        ! with no temporary.
+        DO J=0,ILRECV-1
+          IRECBUF(NGSTA(ICOUNT)+J) = IGRIBUF(IOFF+1+J)
+        ENDDO
       ENDIF
       NGSTA(ICOUNT+1)=NGSTA(ICOUNT)+ILRECV
       ILRECV=0
