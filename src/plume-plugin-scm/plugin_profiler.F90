@@ -384,8 +384,10 @@ contains
       return
     endif
 
-    allocate(character(len=TIMER_NAME_LEN*ngtimers) :: namebuf)
-    namebuf = ''
+    ! NB: allocate + `namebuf = ''` would not work here. Assigning to a deferred-length
+    ! allocatable is an intrinsic assignment, so it reallocates the buffer to the length
+    ! of the right-hand side (zero), and the substring writes below then go out of bounds.
+    namebuf = repeat(' ', TIMER_NAME_LEN*ngtimers)
     if (myproc == 0) then
       do i = 1, nTimers
         ib = (i-1)*TIMER_NAME_LEN
@@ -501,8 +503,6 @@ contains
     endif
 
     deallocate(gnames, gmin, gmax, gsum, gself, gcalls, gmaxrank, namebuf)
-
-    write(*,*) "SCM plugin timer report complete on rank ", myproc, " of ", nproc
 
   end subroutine print_timers
 
