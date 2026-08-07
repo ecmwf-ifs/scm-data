@@ -115,7 +115,10 @@ type(atlas_Field) :: grad
 type(atlas_Field) :: grad_one_lev
 type(atlas_Field) :: grad_wind
 
-! Ghost mask (created once in scm_setup, reused in scm_run)
+! Ghost mask (created once in scm_setup, reused in scm_run).
+! ghost_mask points into ghostField's data, so the field handle has to stay alive
+! for as long as the mask is read - it is released in scm_teardown, not in scm_setup.
+type(atlas_Field) :: ghostField
 INTEGER(KIND=c_int), POINTER :: ghost_mask(:) => null()
 
 ! Cached paramIds for fields (computed once in scm_setup, read in scm_run) - PLUME-85
@@ -226,7 +229,6 @@ subroutine scm_setup(plugin_config, model_data)
   INTEGER(KIND=c_int), POINTER :: ghost(:)
   REAL(KIND=c_double), POINTER :: lonlat(:,:)
   type(atlas_Field) :: lonlatField
-  type(atlas_Field) :: ghostField
 
   character(1024) :: vtable_testing_namelist
   integer :: vtable_testing_namelist_status
@@ -252,7 +254,9 @@ subroutine scm_setup(plugin_config, model_data)
   ! setup MPI info
   mpi_comm = fckit_mpi_comm()
   NPROC  = mpi_comm%size()
-  MYPROC = mpi_comm%rank() + 1 
+  MYPROC = mpi_comm%rank() + 1
+
+  START_PLUGIN_TIMER("scm_setup.get_fields")
 
   ! fill-in array of fields (SRF)
   do ifield=1,size(field_names_srf)
@@ -290,6 +294,9 @@ subroutine scm_setup(plugin_config, model_data)
   call plume_check(model_data%get_shared_atlas_field("u", field_u))
   call plume_check(model_data%get_shared_atlas_field("v", field_v))
 
+  STOP_PLUGIN_TIMER("scm_setup.get_fields")
+
+  START_PLUGIN_TIMER("scm_setup.config")
 
   call plume_check(model_data%get_int("NSTEP",NSTEP))
   call plume_check(model_data%get_double("TSTEP",TSTEP))
@@ -352,6 +359,9 @@ subroutine scm_setup(plugin_config, model_data)
   ! max radius of search for nearest grid point
   found_delta = plugin_config%get("DELTA", ZDELTA)
 
+  STOP_PLUGIN_TIMER("scm_setup.config")
+
+  START_PLUGIN_TIMER("scm_setup.vert_tables")
   ! vertical levels coefficients
   ! For testing only: read the vertical levels from namelist (for consistency)
   call get_environment_variable("PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST", vtable_testing_namelist, status=vtable_testing_namelist_status)
@@ -361,7 +371,9 @@ subroutine scm_setup(plugin_config, model_data)
   else
     call get_vertical_tables(NLEV, PVAH, PVBH)
   endif
+  STOP_PLUGIN_TIMER("scm_setup.vert_tables")
 
+  START_PLUGIN_TIMER("scm_setup.points")
   ! point coordinates
   found = plugin_config%get("points", plugin_config_points)
   ! if no points are specified, then the plugin will not run
@@ -400,6 +412,7 @@ subroutine scm_setup(plugin_config, model_data)
 
   ! Build the step -> [iloc] extraction schedule from the per-point config.
   call extract_mgr%init(plugin_config_points, nb_locations)
+  STOP_PLUGIN_TIMER("scm_setup.points")
 
   write(msg,'(A,I0)')   "nb_locations = ", nb_locations; call log%info(msg)
   write(msg,'(A,F5.3)') "zdelta = ", zdelta; call log%info(msg)
@@ -412,6 +425,7 @@ subroutine scm_setup(plugin_config, model_data)
   !        2.   set up necessary info on gg and sh fields
   !             --------------------------------------------------------------
 
+  START_PLUGIN_TIMER("scm_setup.partitioner")
   ! initialize config on the sphere
   config = atlas_Config()
   call config%set("radius",6371229.0)
@@ -420,13 +434,16 @@ subroutine scm_setup(plugin_config, model_data)
   input_grid = input_fs%grid()
   allocate(input_fs_parent, source=input_fs)
   partitioner = atlas_MatchingPartitioner(input_fs_parent)
+  STOP_PLUGIN_TIMER("scm_setup.partitioner")
 
+  START_PLUGIN_TIMER("scm_setup.meshgen")
   ! mesh
   meshgenerator = atlas_Meshgenerator(config)
   mesh = meshgenerator%generate(input_grid,partitioner)
+  STOP_PLUGIN_TIMER("scm_setup.meshgen")
 
   nodes = mesh%nodes()
-  
+
   ! find the processor and node location on the processor responsible for each user specified lat/lon location
   nb_nodes = nodes%size()
   lonlatField = nodes%lonlat()
@@ -437,6 +454,7 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0,A,I0)') "nodes: ", nb_nodes, ", lonlat%size(): ", lonlatField%size(); call log%info(msg)
 
   ! find the nearest grid point to each user specified lat/lon location
+  START_PLUGIN_TIMER("scm_setup.nearest_distance")
   if ( .not. found_delta ) then
     write(msg,'(A)') "No ZDELTA specified, using kdtree to find nearest point"; call log%info(msg)
     call nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
@@ -444,6 +462,7 @@ subroutine scm_setup(plugin_config, model_data)
     write(msg,'(A,F8.4)') "ZDELTA = ", zdelta; call log%info(msg)
     call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
   endif
+  STOP_PLUGIN_TIMER("scm_setup.nearest_distance")
 
   do j=1, nb_locations
     write(msg,'(A,I0)') "iproc: ", locations(j)%iproc ; call log%info(msg)
@@ -460,12 +479,15 @@ subroutine scm_setup(plugin_config, model_data)
   write(msg,'(A,I0)') "input_grid%size(): ", input_grid%size(); call log%info(msg)
 
   ! this is the functionspace nodepoints
+  START_PLUGIN_TIMER("scm_setup.fvm")
   fvm = atlas_fvm_Method(mesh, config)
   nodepoints = fvm%node_columns()
+  STOP_PLUGIN_TIMER("scm_setup.fvm")
   write(msg,'(A,A)') "finished Atlas fvm function space"; call log%info(msg)
 
   gridpoints = input_fs
 
+  START_PLUGIN_TIMER("scm_setup.fieldsets")
 ! initialize config on the sphere
   config = atlas_Config()
   call config%set("radius",6371229.0)
@@ -499,6 +521,9 @@ subroutine scm_setup(plugin_config, model_data)
     call fields_oth_set%add( fields_oth(ifield) )
   enddo
 
+  STOP_PLUGIN_TIMER("scm_setup.fieldsets")
+
+  START_PLUGIN_TIMER("scm_setup.paramids")
   ! PLUME-85: Cache paramIds for fields to avoid string comparison lookups in scm_run
   allocate(param_ids_spc(size(fields_spc)))
   do ifield=1,size(fields_spc)
@@ -516,6 +541,9 @@ subroutine scm_setup(plugin_config, model_data)
     param_ids_srf(ifield) = param_name2id(fieldtemp%name())
   enddo
 
+  STOP_PLUGIN_TIMER("scm_setup.paramids")
+
+  START_PLUGIN_TIMER("scm_setup.alloc_columns")
   ! allocate and initialise location columns
   do iloc=1, nb_locations
     if( myproc == locations(iloc)%iproc ) then
@@ -531,9 +559,14 @@ subroutine scm_setup(plugin_config, model_data)
   enddo
 
 
-! initialise the NetCDF output writer (reads APPEND_OUTPUT + PLUME_PLUGINS_OUTPUT_DIR)
-call nc_writer%init(plugin_config)
+STOP_PLUGIN_TIMER("scm_setup.alloc_columns")
 
+! initialise the NetCDF output writer (reads APPEND_OUTPUT + PLUME_PLUGINS_OUTPUT_DIR)
+START_PLUGIN_TIMER("scm_setup.nc_init")
+call nc_writer%init(plugin_config)
+STOP_PLUGIN_TIMER("scm_setup.nc_init")
+
+START_PLUGIN_TIMER("scm_setup.create_node_fields")
 ! initialise fieldset for CLD fields on nodepoints
 gpfields_cld_nodes = atlas_FieldSet("nodepoints")
 
@@ -564,12 +597,14 @@ grad_one_lev = nodepoints%create_field(name="grad_one_lev", kind=atlas_real(JPRB
 grad_wind = nodepoints%create_field(name="gradwind", kind=atlas_real(JPRB), levels=nlev, variables=4)
 
 ! cache the ghost mask (PLUME-85: avoid refetching per-field in scm_run)
-! allocate(ghost_mask(nb_nodes))
+! ghostField is module scope and deliberately NOT finalised here: ghost_mask aliases
+! its data and is read on every step by update_nodefield_from_field.
 ghostField = nodes%ghost()
 call ghostField%data(ghost_mask)
-call ghostField%final()
+STOP_PLUGIN_TIMER("scm_setup.create_node_fields")
 
 ! finalisation
+START_PLUGIN_TIMER("scm_setup.finalise")
 call input_fs%final()
 call input_fs_parent%final()
 call input_grid%final()
@@ -579,7 +614,7 @@ call nodes%final()
 call meshgenerator%final()
 call partitioner%final()
 call lonlatField%final()
-call ghostField%final()
+STOP_PLUGIN_TIMER("scm_setup.finalise")
 
 ! stop the profiler timer
 STOP_PLUGIN_TIMER("scm_setup")
@@ -636,9 +671,12 @@ integer :: ifield
 #include "fillvar_from_plume.h"
 #include "update_nodefield.h"
 
-! start the profiler timer
+! start the profiler timer. scm_run is entered on every model step, including the
+! ones skipped by the guards below, so its call count reports how often the host
+! called us and the executed-step children report how often we actually ran.
 START_PLUGIN_TIMER("scm_run")
 
+START_PLUGIN_TIMER("scm_run.prologue")
 call plume_check(model_data%get_int("NSTEP",NSTEP))
 call plume_check(model_data%get_double("TSTEP",TSTEP))
 call plume_check(model_data%get_int("INIT_DATE",INIT_DATE))
@@ -651,20 +689,26 @@ INFO%LCALC_PLUGIN = .true. ! times are from plugin
 INFO%DTIME = NSTEP * TSTEP ! time step in seconds
 
 ! use double precision for the time step from plugin..
+STOP_PLUGIN_TIMER("scm_run.prologue")
 
 
-! Run the plugin only at every RUN_EVERY steps
+! Run the plugin only at every RUN_EVERY steps.
+! Every early return below must stop "scm_run" first, otherwise the region is left
+! open and the enclosing self-time accounting is wrong.
 if ( (MOD(NSTEP, RUN_EVERY) /= 0) .or. (NSTEP.lt.INIT_STEP) ) then
+  STOP_PLUGIN_TIMER("scm_run")
   return
 endif
 
 if ( (FINAL_STEP.ge.0) .and. (NSTEP.gt.FINAL_STEP) ) then
+  STOP_PLUGIN_TIMER("scm_run")
   return
 endif
 
 ! check if NSTEP has changed
 #ifdef WITH_SCM_PLUME_PLUGIN_UNIQUE_STEPS
 if (NSTEP == NSTEP_OLD) then
+  STOP_PLUGIN_TIMER("scm_run")
   return
 else
   NSTEP_OLD = NSTEP
@@ -673,6 +717,7 @@ endif
 
 call log%info("SCM-PLUGIN executing step..")
 
+START_PLUGIN_TIMER("scm_run.fillvar_from_plume")
 if (.not.larea) then
     do iloc=1, nb_locations
       if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, NSTEP) ) then
@@ -680,6 +725,7 @@ if (.not.larea) then
       endif
     enddo
 endif
+STOP_PLUGIN_TIMER("scm_run.fillvar_from_plume")
 
 ! update all the SP fields into nodepoints
 START_PLUGIN_TIMER("scm_run.update_sp_fields")
@@ -749,6 +795,8 @@ subroutine scm_teardown(plugin_config, model_data)
   integer :: iloc, ifield
   character(127) :: msg
 
+  START_PLUGIN_TIMER("scm_teardown")
+
   deallocate(pvah)
   deallocate(pvbh)
   deallocate(zlat)
@@ -764,7 +812,8 @@ subroutine scm_teardown(plugin_config, model_data)
   deallocate(locations)
 
   ! Cleanup
-  call fvm%final()  
+  START_PLUGIN_TIMER("scm_teardown.atlas_final")
+  call fvm%final()
 
   do ifield=1,n_fields_srf
     call fields_srf(ifield)%final()
@@ -815,7 +864,10 @@ subroutine scm_teardown(plugin_config, model_data)
   call grad_one_lev%final()
   call grad_wind%final()
 
-  ! if (allocated(ghost_mask)) deallocate(ghost_mask)
+  ! ghost_mask is not owned here - it aliases ghostField's data. Drop the alias
+  ! first, then release the field handle that kept it valid since scm_setup.
+  ghost_mask => null()
+  call ghostField%final()
 
   if (allocated(param_ids_spc)) deallocate(param_ids_spc)
   if (allocated(param_ids_cld)) deallocate(param_ids_cld)
@@ -824,10 +876,21 @@ subroutine scm_teardown(plugin_config, model_data)
   call fvm%final()
   call nodepoints%final()
   call gridpoints%final()
+  STOP_PLUGIN_TIMER("scm_teardown.atlas_final")
 
+  START_PLUGIN_TIMER("scm_teardown.nc_finalize")
   call nc_writer%finalize()
-  call extract_mgr%finalize()
+  STOP_PLUGIN_TIMER("scm_teardown.nc_finalize")
 
+  START_PLUGIN_TIMER("scm_teardown.extract_mgr_finalize")
+  call extract_mgr%finalize()
+  STOP_PLUGIN_TIMER("scm_teardown.extract_mgr_finalize")
+
+  ! Close scm_teardown before reporting, so that no region is still open when the
+  ! table is built (the report itself is not part of the measured work).
+  STOP_PLUGIN_TIMER("scm_teardown")
+
+  ! Collective on mpi_comm: every rank must reach this call.
   PRINT_PLUGIN_TIMER(mpi_comm)
 
   call mpi_comm%final()
