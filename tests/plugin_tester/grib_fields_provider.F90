@@ -149,6 +149,14 @@ module grib_fields_provider_mod
 
         integer :: field_param_id
 
+        ! Every field created below is zeroed before the GRIB records are copied in.
+        ! Without this, a field whose paramId is absent from the input files is left
+        ! at whatever create_field produced; in a Debug ATLAS build that is signalling
+        ! NaN (ATLAS_INIT_SNAN), which traps under -fpe0 the first time the value goes
+        ! through a real conversion - far away from here, in ncdf_varwrite1c.
+        logical            :: found_any
+        character(len=256) :: msg
+
 
         ! Create the SURFACE fields (and fill them in with value in the corresponding fieldset)
         ! write(*,*) "n_fields_srf: ", n_fields_srf
@@ -159,6 +167,8 @@ module grib_fields_provider_mod
 
             tmp_field = gridpoints%create_field(name=trim(field_names_srf(ifield)), kind=atlas_real(jprb), type="scalar", levels=1)
             call tmp_field%data(values)
+            values(:,:) = 0.0_jprb
+            found_any = .false.
 
             ! loop over the fieldset (NOT very efficient, for testing only!)
             ! write(*,*) "sfcfields%size(): ", sfcfields%size()
@@ -178,9 +188,16 @@ module grib_fields_provider_mod
                     ! write(*,*) "size(values,2): ", size(values,2)
                     ! write(*,*) "size(values_single_level,1): ", size(values_single_level,1)
                     values(1,:) = values_single_level
+                    found_any = .true.
                 endif
 
             enddo
+
+            if (.not.found_any) then
+                write(msg,'(A,A,A,I0,A)') "grib_fields_provider: no GRIB record for surface field '", &
+                  & trim(field_names_srf(ifield)), "' (paramId ", field_param_id, ") - zero filled"
+                call fckit_log%warning(msg)
+            endif
 
             this%fields_srf(ifield) = tmp_field
         enddo
@@ -204,8 +221,10 @@ module grib_fields_provider_mod
 
                 tmp_field = gridpoints%create_field(name=trim(field_names_sol(ifield)), kind=atlas_real(jprb), type="scalar", levels=ncss)
                 call tmp_field%data(values)
+                values(:,:) = 0.0_jprb
 
                 do isol_lvl=1,ncss
+                    found_any = .false.
                     do ifield_in_set=1,sfcfields%size()
                         tmp_field_single_level = sfcfields%field(ifield_in_set)
                         metadata = tmp_field_single_level%metadata()
@@ -215,8 +234,16 @@ module grib_fields_provider_mod
                         if (iparam == sol_paramids(isol_lvl, ifield)) then
                             call tmp_field_single_level%data(values_single_level)
                             values(isol_lvl,:) = values_single_level
+                            found_any = .true.
                         endif
                     enddo
+
+                    if (.not.found_any) then
+                        write(msg,'(A,A,A,I0,A,I0,A)') "grib_fields_provider: no GRIB record for soil field '", &
+                          & trim(field_names_sol(ifield)), "' layer ", isol_lvl, " (paramId ", &
+                          & sol_paramids(isol_lvl, ifield), ") - zero filled"
+                        call fckit_log%warning(msg)
+                    endif
                 enddo
 
                 this%fields_sol(ifield) = tmp_field
@@ -234,6 +261,8 @@ module grib_fields_provider_mod
 
             tmp_field = gridpoints%create_field(name=trim(field_names_cld(ifield)), kind=atlas_real(jprb), type="scalar", levels=nlev)
             call tmp_field%data(values)
+            values(:,:) = 0.0_jprb
+            found_any = .false.
 
             ! loop over the fieldset (NOT very efficient, for testing only!)
             do ifield_in_set=1,gpfields%size()
@@ -252,8 +281,15 @@ module grib_fields_provider_mod
                     ! write(*,*) "size(values,2): ", size(values,2)
                     ! write(*,*) "size(values_single_level,1): ", size(values_single_level,1)
                     values(ilvl,:) = values_single_level
+                    found_any = .true.
                 endif
             enddo
+
+            if (.not.found_any) then
+                write(msg,'(A,A,A,I0,A)') "grib_fields_provider: no GRIB record for cloud field '", &
+                  & trim(field_names_cld(ifield)), "' (paramId ", field_param_id, ") - zero filled"
+                call fckit_log%warning(msg)
+            endif
 
             this%fields_cld(ifield) = tmp_field
         enddo
@@ -273,6 +309,8 @@ module grib_fields_provider_mod
             endif
 
             call tmp_field%data(values)
+            values(:,:) = 0.0_jprb
+            found_any = .false.
 
             ! loop over the fieldset (NOT very efficient, for testing only!)
             ! write(*,*) "gpfields_from_sp%size(): ", gpfields_from_sp%size()
@@ -294,9 +332,17 @@ module grib_fields_provider_mod
                     else
                         values(ilvl,:) = values_single_level
                     endif
+                    found_any = .true.
                 endif
             enddo
-            
+
+            ! The t159 fixtures carry no paramId 135 ("w"), so this fires for omega.
+            if (.not.found_any) then
+                write(msg,'(A,A,A,I0,A)') "grib_fields_provider: no GRIB record for spectral field '", &
+                  & trim(field_names_spc(ifield)), "' (paramId ", field_param_id, ") - zero filled"
+                call fckit_log%warning(msg)
+            endif
+
             this%fields_spc(ifield) = tmp_field
         enddo
 
@@ -313,13 +359,21 @@ module grib_fields_provider_mod
         values_u(:,:) = values_uv(1,:,:)
         values_v(:,:) = values_uv(2,:,:)
 
-        ! other fields (unused)
+        ! other fields (unused). No GRIB record is ever copied into these, so they must
+        ! be zeroed explicitly - they would otherwise be handed to the plugin as sNaN.
 #ifndef WITH_SCM_GRIB2_FIELDS
         ! 100u/100v are only expected by the plugin in the single-level (non-GRIB2) mode.
         this%field_100u = nodepoints%create_field(name="100u", kind=atlas_real(JPRB), levels=nlev)
+        call this%field_100u%data(values)
+        values(:,:) = 0.0_jprb
+
         this%field_100v = nodepoints%create_field(name="100v", kind=atlas_real(JPRB), levels=nlev)
+        call this%field_100v%data(values)
+        values(:,:) = 0.0_jprb
 #endif
-        this%field_tcw = nodepoints%create_field(name="tcw", kind=atlas_real(JPRB), levels=nlev)                        
+        this%field_tcw = nodepoints%create_field(name="tcw", kind=atlas_real(JPRB), levels=nlev)
+        call this%field_tcw%data(values)
+        values(:,:) = 0.0_jprb
 
     end subroutine
 
