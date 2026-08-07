@@ -64,6 +64,10 @@ use extraction_manager_mod, only : extraction_manager
   use plugin_profiler_mod
 #endif
 
+! Included here rather than with the other includes below because the handle
+! declarations it provides have to appear in the declaration section.
+#include "profiler_macros.h"
+
 implicit none
 
 INTEGER(KIND=JPIM), intent(in) :: nproc
@@ -149,8 +153,17 @@ TYPE(TPARAM), POINTER :: PX
 
 integer :: i,j
 
+! Timer handles for the regions inside the per-field loops. Registering the name
+! once per call and starting/stopping by handle keeps the linear name lookup out
+! of the loop, where it would otherwise perturb what is being measured.
+DECLARE_PLUGIN_TIMER(ih_sp_halo)
+DECLARE_PLUGIN_TIMER(ih_sp_nabla)
+DECLARE_PLUGIN_TIMER(ih_sp_fill)
+DECLARE_PLUGIN_TIMER(ih_gp_halo)
+DECLARE_PLUGIN_TIMER(ih_gp_nabla)
+DECLARE_PLUGIN_TIMER(ih_gp_fill)
+
 #include "calcgeost.h"
-#include "profiler_macros.h"
 !-------------------------------------------------------------------------
 
 IF( NPROC > 1 ) mpi_comm = fckit_mpi_comm()
@@ -160,10 +173,22 @@ zdir = -1.0_jprb
 zpi = 2.0_jprb*asin(1.0_jprb)
 zdeg2rad= zpi/180._jprb
 
+! Register the loop-region names once, outside the loops.
+REGISTER_PLUGIN_TIMER(ih_sp_halo,  "scm_run.process_plume_fields.gradients_sp.halo")
+REGISTER_PLUGIN_TIMER(ih_sp_nabla, "scm_run.process_plume_fields.gradients_sp.nabla")
+REGISTER_PLUGIN_TIMER(ih_sp_fill,  "scm_run.process_plume_fields.gradients_sp.fill")
+REGISTER_PLUGIN_TIMER(ih_gp_halo,  "scm_run.process_plume_fields.gradients_gp.halo")
+REGISTER_PLUGIN_TIMER(ih_gp_nabla, "scm_run.process_plume_fields.gradients_gp.nabla")
+REGISTER_PLUGIN_TIMER(ih_gp_fill,  "scm_run.process_plume_fields.gradients_gp.fill")
+
 !! calculate wind + derivatives
 START_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
+START_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind.halo")
 call nodepoints%halo_exchange(windfield)
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind.halo")
+START_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind.nabla")
 call nabla_in%gradient(windfield,grad_wind_in)
+STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind.nabla")
 call grad_wind_in%data(grad_wind_data)
 call windfield%data(wind)
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradient_wind")
@@ -184,18 +209,26 @@ do jfld=1,isize
 
   ! derivatives
   if ( iparam == 130 ) then
+    START_PLUGIN_TIMER_H(ih_sp_halo)
     call nodepoints%halo_exchange(field)
+    STOP_PLUGIN_TIMER_H(ih_sp_halo)
+    START_PLUGIN_TIMER_H(ih_sp_nabla)
     call nabla_in%gradient(field,grad_in)
+    STOP_PLUGIN_TIMER_H(ih_sp_nabla)
     call grad_in%data(grad_data)
   endif
 
   ! special case for sp and geopotential
   if ( iparam == 152 .or. iparam == 129) then
 
+    START_PLUGIN_TIMER_H(ih_sp_halo)
     call nodepoints%halo_exchange(field)
+    STOP_PLUGIN_TIMER_H(ih_sp_halo)
 
     if ( field%levels() == 1 ) then
+      START_PLUGIN_TIMER_H(ih_sp_nabla)
       call nabla_in%gradient(field,grad_one_lev_in)
+      STOP_PLUGIN_TIMER_H(ih_sp_nabla)
       call grad_one_lev_in%data(grad_data)
     else
       write(msg,'(A,A,A)') " ERROR: field ", field%name(), " has more than 1 level, but should have only 1 level!" ; call log%error(msg)
@@ -206,6 +239,7 @@ do jfld=1,isize
   endif
 
   ! fill values
+  START_PLUGIN_TIMER_H(ih_sp_fill)
   do iloc=1, nb_locations
     if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, kstep) ) then
       do ilev=1,n_field_levels
@@ -237,6 +271,7 @@ do jfld=1,isize
       enddo ! ilev
     endif
   enddo ! iloc
+  STOP_PLUGIN_TIMER_H(ih_sp_fill)
 
 enddo ! ifield
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_sp")
@@ -258,12 +293,17 @@ do jfld=1,isize
 
   ! derivatives
   if ( iparam == 133 .or. iparam ==  75 .or. iparam == 76 .or. iparam == 246 .or. iparam == 247 .or. iparam == 248 ) then
+    START_PLUGIN_TIMER_H(ih_gp_halo)
     call nodepoints%halo_exchange(field)
+    STOP_PLUGIN_TIMER_H(ih_gp_halo)
+    START_PLUGIN_TIMER_H(ih_gp_nabla)
     call nabla_in%gradient(field, grad_in)
+    STOP_PLUGIN_TIMER_H(ih_gp_nabla)
     call grad_in%data(grad_data)
   endif
 
   ! fill values
+  START_PLUGIN_TIMER_H(ih_gp_fill)
   do iloc=1, nb_locations
     if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, kstep) ) then
       do ilev=1,n_field_levels
@@ -300,6 +340,7 @@ do jfld=1,isize
       enddo ! ilev
     endif
   enddo ! iloc
+  STOP_PLUGIN_TIMER_H(ih_gp_fill)
 enddo ! field
 STOP_PLUGIN_TIMER("scm_run.process_plume_fields.gradients_gp")
 

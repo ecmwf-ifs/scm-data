@@ -16,6 +16,12 @@ module scm_nc_output_mod
 
   use extraction_manager_mod, only : extraction_manager
 
+#ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
+  use plugin_profiler_mod
+#endif
+
+#include "profiler_macros.h"
+
   implicit none
 
   private
@@ -106,8 +112,17 @@ contains
     character(len=:), allocatable   :: nc_fullpath
     character(len=512)              :: msg
 
+    DECLARE_PLUGIN_TIMER(ih_nc_open)
+    DECLARE_PLUGIN_TIMER(ih_nc_append)
+
 #include "su_wrt_nc.h"
 #include "wrt1c_nc.h"
+
+    ! Registered outside the loop below: the loop body is skipped entirely on ranks
+    ! that own none of the extraction points, and every rank must end up with the
+    ! same set of timer names for the collective report to line up.
+    REGISTER_PLUGIN_TIMER(ih_nc_open,   "scm_run.write_netcdf.open")
+    REGISTER_PLUGIN_TIMER(ih_nc_append, "scm_run.write_netcdf.append")
 
     ilocs = extract_mgr%get_points_at_step(nstep)
 
@@ -126,12 +141,16 @@ contains
       nc_fullpath = build_filename(self, myproc, iloc, nstep)
 
       ! setup the output NetCDF file (creates if missing, opens if present)
+      START_PLUGIN_TIMER_H(ih_nc_open)
       call SU_WRT_NC(nc_fullpath, pvah, pvbh, dataid, locations(iloc)%IFILE_ID, nlev)
+      STOP_PLUGIN_TIMER_H(ih_nc_open)
 
       ! write data to the NetCDF file
       write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", nstep, info%IDATE
       call log%debug(msg)
+      START_PLUGIN_TIMER_H(ih_nc_append)
       call WRT1C_NC(locations(iloc), pvah, pvbh, info, locations(iloc)%IFILE_ID, nlev)
+      STOP_PLUGIN_TIMER_H(ih_nc_append)
 
       deallocate(nc_fullpath)
     enddo
