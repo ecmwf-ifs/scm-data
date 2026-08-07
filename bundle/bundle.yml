@@ -125,3 +125,11 @@ options :
     - without-scm-plume-plugin-grib2-fields :
         help  : Do not build the scm-data plume plugin with GRIB2 fields
         cmake : ENABLE_SCM_GRIB2_FIELDS=OFF
+
+    - with-scm-plume-plugin-profiler :
+        help  : Build the scm-data plume plugin with profiler
+        cmake : ENABLE_SCM_PLUME_PLUGIN_PROFILER=ON
+    
+    - without-scm-plume-plugin-profiler :
+        help  : Do not build the scm-data plume plugin with profiler
+        cmake : ENABLE_SCM_PLUME_PLUGIN_PROFILER=OFF
