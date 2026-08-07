@@ -44,5 +44,5 @@ infero_version.h
 # bundle
 bundle/ecbundle
 bundle/source
-bundle/build
+bundle/build*
 bundle/install
