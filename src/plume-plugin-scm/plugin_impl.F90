@@ -561,9 +561,10 @@ subroutine scm_setup(plugin_config, model_data)
 
 STOP_PLUGIN_TIMER("scm_setup.alloc_columns")
 
-! initialise the NetCDF output writer (reads APPEND_OUTPUT + PLUME_PLUGINS_OUTPUT_DIR)
+! initialise the NetCDF output writer (reads APPEND_OUTPUT, APPEND_OUTPUT_NSTEPS
+! + PLUME_PLUGINS_OUTPUT_DIR; RUN_EVERY/INIT_STEP define the output batch windows)
 START_PLUGIN_TIMER("scm_setup.nc_init")
-call nc_writer%init(plugin_config)
+call nc_writer%init(plugin_config, RUN_EVERY, INIT_STEP)
 STOP_PLUGIN_TIMER("scm_setup.nc_init")
 
 START_PLUGIN_TIMER("scm_setup.create_node_fields")

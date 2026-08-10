@@ -201,6 +201,20 @@ if (HAVE_SCM_PLUME_PLUGIN)
             TEST_DEPENDS test_files_t159
         )
 
+        # APPEND_OUTPUT=1 with APPEND_OUTPUT_NSTEPS=N: steps are batched into
+        # files holding at most N time records, named after the step window
+        # they cover.
+        ecbuild_configure_file(
+            test_scm_plugin_append_batch.sh.in
+            test_scm_plugin_append_batch.sh @ONLY
+        )
+
+        ecbuild_add_test(
+            TYPE        SCRIPT
+            COMMAND     test_scm_plugin_append_batch.sh
+            TEST_DEPENDS test_files_t159
+        )
+
     else()
         message("Double Precision is NOT enabled => test_scm_plugin is NOT built.")
     endif()

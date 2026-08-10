@@ -37,7 +37,29 @@ The plugin is configured through a plume JSON configuration file, under
 | `DATAID` | string | Identifier used to tag the extracted data / output | - |
 | `DELTA` | real | Maximum search radius (degrees) used to match a point to the nearest model grid point. If not specified, a kdtree search for the nearest point is used instead | - |
 | `APPEND_OUTPUT` | int (0/1) | `1`: append every extraction to a single NetCDF file per (proc, location) named `scm_in_proc_<myproc>_pt_<iloc>.nc`. `0`: write one file per (proc, location, step) named `scm_in_proc_<myproc>_pt_<iloc>_step_<nstep>.nc` | `1` |
+| `APPEND_OUTPUT_NSTEPS` | int | Maximum number of steps batched into one appended file (see below). `0` or negative means no limit, i.e. a single file per (proc, location). Only used when `APPEND_OUTPUT=1` | `0` |
 | `points` | array | List of point definitions (see below) | - |
+
+#### Batching appended output
+
+With `APPEND_OUTPUT=1` and `APPEND_OUTPUT_NSTEPS=N` (`N > 0`), the extractions
+are batched into files holding at most `N` time records each, named after the
+window of steps they cover:
+
+```
+scm_in_proc_00001_pt_00012_step_00004_to_00023.nc
+```
+
+The windows are `N * RUN_EVERY` model steps wide and are anchored at the first
+step the plugin runs at (the first multiple of `RUN_EVERY` greater than or equal
+to `INIT_STEP`), so all points share the same file boundaries and the file names
+are reproducible from the configuration alone. With `RUN_EVERY=1`,
+`INIT_STEP=4` and `APPEND_OUTPUT_NSTEPS=20`, the windows are steps `4-23`,
+`24-43`, ...
+
+The name gives the step window, not the content: a file holds fewer than `N`
+records when the point is only extracted at some of the steps of the window
+(per-point `timesteps`), or when the run stops before the window is complete.
 
 ### `points` entry options
 
@@ -101,6 +123,34 @@ Extracting data from a few points, each one only at specific time steps:
                     { "ID": 1, "lat": 11.11, "lon": 22.22, "timesteps": [1, 3, 5] },
                     { "ID": 2, "lat": 33.33, "lon": 44.44, "timesteps": [2, 4, 6] },
                     { "ID": 3, "lat": 55.55, "lon": 66.66, "timesteps": [1, 2, 3] }
+                ]
+            }
+        }
+    ]
+}
+```
+
+Extracting at every step, batching at most 20 steps per output file
+(`scm_in_proc_00001_pt_00001_step_00000_to_00019.nc`,
+`..._step_00020_to_00039.nc`, ...):
+
+```jsonc
+{
+    "plugins": [
+        {
+            "name": "PluginSCMData",
+            "lib": "plugin_scm_data_dp",
+            "core-config": {
+                "LAREA": 0,
+                "LPROGNOSTIC": 1,
+                "RUN_EVERY": 1,
+                "APPEND_OUTPUT": 1,
+                "APPEND_OUTPUT_NSTEPS": 20,
+                "DATAID": "test_append_batch",
+                "DELTA": 0.75,
+                "points": [
+                    { "ID": 1, "lat": 11.11, "lon": 22.22 },
+                    { "ID": 2, "lat": 33.33, "lon": 44.44 }
                 ]
             }
         }
