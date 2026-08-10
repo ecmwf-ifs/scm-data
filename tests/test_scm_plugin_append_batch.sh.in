@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+
+# (C) Copyright 2024- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation nor
+# does it submit to any jurisdiction.
+
+# Test: batched appended output (APPEND_OUTPUT=1 + APPEND_OUTPUT_NSTEPS=N)
+#
+# With APPEND_OUTPUT_NSTEPS=N the writer batches at most N steps per file, and
+# the file name carries the window of steps the file covers:
+#   scm_in_proc_<proc>_pt_<iloc>_step_<first>_to_<last>.nc
+# The windows are N*RUN_EVERY steps wide and anchored at the first step the
+# plugin runs at (the first multiple of RUN_EVERY >= INIT_STEP).
+#
+# Phase 1 (plume-config-ifs-t159-append-batch-test.json):
+#   RUN_EVERY=1, INIT_STEP=0 (default), APPEND_OUTPUT_NSTEPS=2 -> windows
+#   [0,1] [2,3] [4,5] [6,7]; driver runs steps 1..6.
+#     point 1  every step        -> 0_to_1:1  2_to_3:2  4_to_5:2  6_to_7:1
+#     point 2  timesteps=[1,3,5] -> 0_to_1:1  2_to_3:1  4_to_5:1
+#     point 3  timesteps=[2,4,6] ->           2_to_3:1  4_to_5:1  6_to_7:1
+#
+# Phase 2 (plume-config-ifs-t159-append-batch-stride-test.json):
+#   RUN_EVERY=3, INIT_STEP=4, APPEND_OUTPUT_NSTEPS=2 -> the plugin runs at
+#   steps 6, 9, 12; the anchor is step 6 and windows are 6 steps wide
+#   ([6,11] [12,17]); driver runs steps 1..12.
+#     points 1,2  every step -> 6_to_9:2   12_to_15:1
+
+set -eux
+
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+bindir=@CMAKE_CURRENT_BINARY_DIR@
+
+input_data_dir=@TEST_DATA_DIR@/input_files_t159
+exedir=@CMAKE_BINARY_DIR@/bin
+configs_dir=@CMAKE_BINARY_DIR@/tests/plugin_configs
+
+proc=00001
+
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-""}:@CMAKE_BINARY_DIR@/lib
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+check_exists() {
+    local f="$1"
+    if [[ ! -f "$f" ]]; then
+        echo "FAIL: expected output file not found: $f"
+        exit 1
+    fi
+    echo "OK:   expected file present:  $f"
+}
+
+check_absent() {
+    local f="$1"
+    if [[ -f "$f" ]]; then
+        echo "FAIL: unexpected output file found: $f"
+        exit 1
+    fi
+    echo "OK:   file correctly absent:  $f"
+}
+
+# Verify record count on the unlimited "time" dimension of a NetCDF file.
+# If ncdump is not available on the system, the check is skipped with a note.
+check_record_count() {
+    local f="$1"
+    local expected="$2"
+
+    if ! command -v ncdump >/dev/null 2>&1 ; then
+        echo "SKIP: ncdump not available, cannot verify record count for $f"
+        return 0
+    fi
+
+    local actual
+    actual=$(ncdump -h "$f" | awk '/time = UNLIMITED/ {
+        for (i=1;i<=NF;i++) if ($i ~ /\(/) { gsub(/[(]/, "", $i); print $i; exit }
+    }')
+
+    if [[ -z "$actual" ]]; then
+        echo "FAIL: could not determine record count of $f"
+        exit 1
+    fi
+
+    if [[ "$actual" -ne "$expected" ]]; then
+        echo "FAIL: $f has $actual time records, expected $expected"
+        exit 1
+    fi
+    echo "OK:   $f has $expected time records"
+}
+
+# Fail if the run produced more output files than the expected ones.
+check_file_count() {
+    local expected="$1"
+    local actual
+    actual=$(ls -1 scm_in_proc_*.nc 2>/dev/null | wc -l)
+    if [[ "$actual" -ne "$expected" ]]; then
+        echo "FAIL: $actual output files produced, expected $expected:"
+        ls -1 scm_in_proc_*.nc || true
+        exit 1
+    fi
+    echo "OK:   $expected output files produced"
+}
+
+# run_driver <tmpdir> <config file> <number of steps>
+run_driver() {
+    local tmpdir_tests="$1"
+    local config="$2"
+    local nsteps="$3"
+
+    if [[ ! -e $tmpdir_tests ]]; then
+        mkdir -p $tmpdir_tests
+    else
+        echo "Directory $tmpdir_tests already exists. Cleaning output files.."
+        rm -f ${tmpdir_tests}/scm_in_proc_00001_pt_*
+    fi
+
+    cd $tmpdir_tests
+
+    # Symlinks to input data (reuse t159 GRIB files)
+    [[ ! -e cld_grib    ]] && ln -s $input_data_dir/cld_grib_t159     cld_grib
+    [[ ! -e sfc_grib    ]] && ln -s $input_data_dir/sfc_grib_t159     sfc_grib
+    [[ ! -e spec_grib   ]] && ln -s $input_data_dir/spec_grib_t159    spec_grib
+    [[ ! -e namelist_1c ]] && ln -s $input_data_dir/namelist_1c_t159  namelist_1c
+
+    export PLUME_CONFIG_FILE=$configs_dir/$config
+    export PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST=./namelist_1c
+    export SCM_PLUGIN_TESTER_N_STEPS=$nsteps
+
+    $exedir/scm_plugin_tester
+}
+
+# check_batches <point id> <"first:last:records" ...>
+check_batches() {
+    local pid_5d
+    pid_5d=$(printf "%05d" "$1")
+    shift
+
+    for bdef in "$@"; do
+        IFS=':' read -r first last expected <<< "$bdef"
+        local f
+        f=$(printf "scm_in_proc_%s_pt_%s_step_%05d_to_%05d.nc" \
+                   "$proc" "$pid_5d" "$first" "$last")
+        check_exists "$f"
+        check_record_count "$f" "$expected"
+    done
+
+    # The un-batched appended file must never be produced when batching is on.
+    check_absent "scm_in_proc_${proc}_pt_${pid_5d}.nc"
+}
+
+
+# ---------------------------------------------------------------------------
+# Phase 1: RUN_EVERY=1, APPEND_OUTPUT_NSTEPS=2, steps 1..6
+# ---------------------------------------------------------------------------
+run_driver @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_append_batch \
+           plume-config-ifs-t159-append-batch-test.json 6
+
+check_batches 1 "0:1:1" "2:3:2" "4:5:2" "6:7:1"
+check_batches 2 "0:1:1" "2:3:1" "4:5:1"
+check_batches 3 "2:3:1" "4:5:1" "6:7:1"
+
+# point 2 is not extracted in the last window, point 3 not in the first one
+check_absent "scm_in_proc_${proc}_pt_00002_step_00006_to_00007.nc"
+check_absent "scm_in_proc_${proc}_pt_00003_step_00000_to_00001.nc"
+
+check_file_count 10
+
+echo "Batched append checks (RUN_EVERY=1) passed."
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: RUN_EVERY=3, INIT_STEP=4, APPEND_OUTPUT_NSTEPS=2, steps 1..12
+# ---------------------------------------------------------------------------
+run_driver @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_append_batch_stride \
+           plume-config-ifs-t159-append-batch-stride-test.json 12
+
+check_batches 1 "6:9:2" "12:15:1"
+check_batches 2 "6:9:2" "12:15:1"
+
+# nothing before the anchor step (first multiple of RUN_EVERY >= INIT_STEP)
+check_absent "scm_in_proc_${proc}_pt_00001_step_00000_to_00005.nc"
+
+check_file_count 4
+
+echo "All batched append checks (APPEND_OUTPUT_NSTEPS) passed."
