@@ -62,7 +62,6 @@ control:
                               # important to select large enough envelope, this is tied to the resolution, 
                               # i.e. 0.3 will work with RESOL=399 and 0.1 will work with RESOL=1279
   dataid: "valid_tl639"       # datails output to the netcdf file
-  prognostic: ".true."
 
 # Next sections contain all the variables that need to be retrieved from MARS or copied from  
 # IFS/OpenIFS output to produce the SCM data. The keys, i.e., spec, sfc, cld, alb etc, are the 

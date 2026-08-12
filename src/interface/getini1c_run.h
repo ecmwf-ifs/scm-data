@@ -55,7 +55,7 @@ character(len=30) :: dataid, cgrid, file
 character(len=10) :: fieldname
 
 REAL(KIND=JPRB) :: zdelta
-logical   :: LAREA, lprognostic, LSINGLE
+logical   :: LSINGLE
 INTEGER(KIND=JPIM) :: nsmax, nstep, I, J, jfld, ilev, iloc, isize, nb_locations, nb_nodes, nlev, iparam, nlocmax
 INTEGER(KIND=JPIM) :: NPROC, MYPROC
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:), PVBH(:)

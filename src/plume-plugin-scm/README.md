@@ -25,24 +25,33 @@ These options are defined in the top-level [CMakeLists.txt](../../CMakeLists.txt
 The plugin is configured through a plume JSON configuration file, under
 `core-config` for the plugin instance, and per-point under `points`.
 
+The whole configuration is handled by the `config_handler` derived type
+(`config_handler.F90`): it parses the keys, applies the defaults listed below,
+checks the values and serves them to the rest of the plugin through its
+getters. A key that the plugin does not know about is reported as a warning
+and ignored, and a configuration that cannot be used (no `points`, a point
+without coordinates, `run_every < 1`, ...) stops the run with an error.
+
+**Configuration keys are case insensitive**: `run_every`, `RUN_EVERY` and
+`Run_Every` all select the same option. Lower case is the documented spelling
+and is used in every example below.
+
 ### `core-config` options
 
 | Option | Type | Description | Default |
 |---|---|---|---|
-| `LPROGNOSTIC` | int (0/1) | Whether the fields extracted are prognostic (used for output metadata) | - |
-| `LAREA` | int (0/1) | Whether the fields extracted are area-averaged (used for output metadata) | - |
-| `RUN_EVERY` | int | Run the plugin every `N` time steps | `1` |
-| `INIT_STEP` | int | First time step at which the plugin runs | `0` |
-| `FINAL_STEP` | int | Last time step at which the plugin runs (`-1` = no limit) | `-1` |
-| `DATAID` | string | Identifier used to tag the extracted data / output | - |
-| `DELTA` | real | Maximum search radius (degrees) used to match a point to the nearest model grid point. If not specified, a kdtree search for the nearest point is used instead | - |
-| `APPEND_OUTPUT` | int (0/1) | `1`: append every extraction to a single NetCDF file per (proc, location) named `scm_in_proc_<myproc>_pt_<iloc>.nc`. `0`: write one file per (proc, location, step) named `scm_in_proc_<myproc>_pt_<iloc>_step_<nstep>.nc` | `1` |
-| `APPEND_OUTPUT_NSTEPS` | int | Maximum number of steps batched into one appended file (see below). `0` or negative means no limit, i.e. a single file per (proc, location). Only used when `APPEND_OUTPUT=1` | `0` |
-| `points` | array | List of point definitions (see below) | - |
+| `run_every` | int | Run the plugin every `N` time steps (must be `>= 1`) | `1` |
+| `init_step` | int | First time step at which the plugin runs (must be `>= 0`) | `0` |
+| `final_step` | int | Last time step at which the plugin runs (`-1` = no limit) | `-1` |
+| `dataid` | string | Identifier used to tag the extracted data / output | `plume-plugin-scm` |
+| `delta` | real | Maximum search radius (degrees) used to match a point to the nearest model grid point (must be `> 0`). If not specified, a kdtree search for the nearest point is used instead | - |
+| `append_output` | int (0/1) | `1`: append every extraction to a single NetCDF file per (proc, location) named `scm_in_proc_<myproc>_pt_<iloc>.nc`. `0`: write one file per (proc, location, step) named `scm_in_proc_<myproc>_pt_<iloc>_step_<nstep>.nc` | `1` |
+| `append_output_nsteps` | int | Maximum number of steps batched into one appended file (see below). `0` means no limit, i.e. a single file per (proc, location). Only used when `append_output=1` | `0` |
+| `points` | array | List of point definitions (see below). At least one point is required | - |
 
 #### Batching appended output
 
-With `APPEND_OUTPUT=1` and `APPEND_OUTPUT_NSTEPS=N` (`N > 0`), the extractions
+With `append_output=1` and `append_output_nsteps=N` (`N > 0`), the extractions
 are batched into files holding at most `N` time records each, named after the
 window of steps they cover:
 
@@ -50,11 +59,11 @@ window of steps they cover:
 scm_in_proc_00001_pt_00012_step_00004_to_00023.nc
 ```
 
-The windows are `N * RUN_EVERY` model steps wide and are anchored at the first
-step the plugin runs at (the first multiple of `RUN_EVERY` greater than or equal
-to `INIT_STEP`), so all points share the same file boundaries and the file names
-are reproducible from the configuration alone. With `RUN_EVERY=1`,
-`INIT_STEP=4` and `APPEND_OUTPUT_NSTEPS=20`, the windows are steps `4-23`,
+The windows are `N * run_every` model steps wide and are anchored at the first
+step the plugin runs at (the first multiple of `run_every` greater than or equal
+to `init_step`), so all points share the same file boundaries and the file names
+are reproducible from the configuration alone. With `run_every=1`,
+`init_step=4` and `append_output_nsteps=20`, the windows are steps `4-23`,
 `24-43`, ...
 
 The name gives the step window, not the content: a file holds fewer than `N`
@@ -65,17 +74,26 @@ records when the point is only extracted at some of the steps of the window
 
 | Option | Type | Description | Default |
 |---|---|---|---|
-| `ID` | int | Point identifier | - |
+| `id` | int | Point identifier (used for logging only) | `-1` |
 | `name` | string | Optional point name (for readability) | - |
-| `lat` | real | Latitude of the point | - |
-| `lon` | real | Longitude of the point (negative values are wrapped to 0-360) | - |
+| `lat` | real | Latitude of the point, within `[-90, 90]` (required) | - |
+| `lon` | real | Longitude of the point, within `[-360, 360]` (required; negative values are wrapped to 0-360) | - |
 | `timesteps` | array of int | List of time steps at which this point is extracted (preferred form) | always extract |
 | `timestep` | int | Single time step at which this point is extracted (legacy, use `timesteps` instead) | always extract |
 | `nstep` | int | Same as `timestep` (legacy alias) | always extract |
 
 If none of `timesteps`, `timestep` or `nstep` is set for a point, it is extracted at every time step the plugin runs.
+A schedule containing a negative step has the same meaning.
 
-The output directory can be set with the `PLUME_PLUGINS_OUTPUT_DIR` environment variable.
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `PLUME_CONFIG_FILE` | Plume configuration file, read by the plume driver (the host model, or `scm_plugin_tester` for the tests) |
+| `PLUME_PLUGINS_OUTPUT_DIR` | Directory the NetCDF output is written to. If unset, the output goes to the current directory |
+| `PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST` | **Testing only**: namelist to read the vertical coefficient tables from, instead of the tables compiled into the plugin |
+
+A variable that is set to an empty value is treated as unset.
 
 ## Example configurations
 
@@ -88,16 +106,14 @@ Extracting data from a small number of points, at every time step the plugin run
             "name": "PluginSCMData",
             "lib": "plugin_scm_data_dp",
             "core-config": {
-                "LAREA": 0,
-                "LPROGNOSTIC": 1,
-                "RUN_EVERY": 1,
-                "APPEND_OUTPUT": 1,
-                "DATAID": "data_ifs_test_t21",
-                "DELTA": 6.0,
+                "run_every": 1,
+                "append_output": 1,
+                "dataid": "data_ifs_test_t21",
+                "delta": 6.0,
                 "points": [
-                    { "ID": 0, "lat": 33.33, "lon": 7.77 },
-                    { "ID": 1, "lat": 44.44, "lon": 8.88 },
-                    { "ID": 2, "lat": 66.66, "lon": 9.99 }
+                    { "id": 0, "lat": 33.33, "lon": 7.77 },
+                    { "id": 1, "lat": 44.44, "lon": 8.88 },
+                    { "id": 2, "lat": 66.66, "lon": 9.99 }
                 ]
             }
         }
@@ -114,15 +130,13 @@ Extracting data from a few points, each one only at specific time steps:
             "name": "PluginSCMData",
             "lib": "plugin_scm_data_dp",
             "core-config": {
-                "LAREA": 0,
-                "LPROGNOSTIC": 1,
-                "APPEND_OUTPUT": 0,
-                "DATAID": "test_timestep_filter",
-                "DELTA": 0.75,
+                "append_output": 0,
+                "dataid": "test_timestep_filter",
+                "delta": 0.75,
                 "points": [
-                    { "ID": 1, "lat": 11.11, "lon": 22.22, "timesteps": [1, 3, 5] },
-                    { "ID": 2, "lat": 33.33, "lon": 44.44, "timesteps": [2, 4, 6] },
-                    { "ID": 3, "lat": 55.55, "lon": 66.66, "timesteps": [1, 2, 3] }
+                    { "id": 1, "lat": 11.11, "lon": 22.22, "timesteps": [1, 3, 5] },
+                    { "id": 2, "lat": 33.33, "lon": 44.44, "timesteps": [2, 4, 6] },
+                    { "id": 3, "lat": 55.55, "lon": 66.66, "timesteps": [1, 2, 3] }
                 ]
             }
         }
@@ -141,16 +155,14 @@ Extracting at every step, batching at most 20 steps per output file
             "name": "PluginSCMData",
             "lib": "plugin_scm_data_dp",
             "core-config": {
-                "LAREA": 0,
-                "LPROGNOSTIC": 1,
-                "RUN_EVERY": 1,
-                "APPEND_OUTPUT": 1,
-                "APPEND_OUTPUT_NSTEPS": 20,
-                "DATAID": "test_append_batch",
-                "DELTA": 0.75,
+                "run_every": 1,
+                "append_output": 1,
+                "append_output_nsteps": 20,
+                "dataid": "test_append_batch",
+                "delta": 0.75,
                 "points": [
-                    { "ID": 1, "lat": 11.11, "lon": 22.22 },
-                    { "ID": 2, "lat": 33.33, "lon": 44.44 }
+                    { "id": 1, "lat": 11.11, "lon": 22.22 },
+                    { "id": 2, "lat": 33.33, "lon": 44.44 }
                 ]
             }
         }

@@ -8,7 +8,7 @@
 ! does it submit to any jurisdiction.
 
 INTERFACE
-SUBROUTINE RDNAM(LAREA,LPROGNOSTIC,DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
+SUBROUTINE RDNAM(DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
 		 & PVAH, PVBH, KLOCMAX, PLAT, PLON, namelist_path)
 
 use yomvar
@@ -18,7 +18,6 @@ implicit none
 INTEGER, PARAMETER :: JMAXPOINTS = 100
 INTEGER, PARAMETER :: JMAXLEV = 200
 
-LOGICAL, intent(out)   :: larea, lprognostic
 INTEGER(KIND=JPIM), intent(out) :: KLOCMAX
 INTEGER(KIND=JPIM), intent(out) :: NLEV, NSMAX, NSTEP
 

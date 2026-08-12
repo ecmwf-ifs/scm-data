@@ -4,15 +4,13 @@
             "name": "PluginSCMData",
             "lib": "plugin_scm_data_dp",
             "core-config": {
-                "LAREA": 0,
-                "LPROGNOSTIC": 1,
-                "RUN_EVERY": 1,
-                "DATAID": "data_ifs_test_tco2559",
-                "DELTA" : 0.05,
+                "run_every": 1,
+                "dataid": "data_ifs_test_tco2559",
+                "delta" : 0.05,
                 "points": [
-                    { "ID": 0, "lat": 33.33, "lon": 7.77 },
-                    { "ID": 1, "lat": 44.44, "lon": 8.88 },
-                    { "ID": 2, "lat": 66.66, "lon": 9.99 }
+                    { "id": 0, "lat": 33.33, "lon": 7.77 },
+                    { "id": 1, "lat": 44.44, "lon": 8.88 },
+                    { "id": 2, "lat": 66.66, "lon": 9.99 }
                 ]   
             }   
         }   

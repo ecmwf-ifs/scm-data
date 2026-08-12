@@ -9,10 +9,9 @@
 
 module extraction_manager_mod
 
-  use, intrinsic :: iso_c_binding, only : c_int32_t
+  use fckit_log_module, only : log
 
-  use fckit_log_module,           only : log
-  use fckit_configuration_module, only : fckit_configuration
+  use config_handler_mod, only : config_handler
 
   use yomvar, only : JPIM
 
@@ -36,12 +35,11 @@ module extraction_manager_mod
 
   ! Extraction scheduler for the SCM plugin.
   !
-  ! At setup time the manager parses, for each configured point:
-  !   * "timesteps"           : list of ints  (new, preferred)
-  !   * "timestep" or "nstep" : single int    (kept for backward compatibility)
-  ! and builds a step -> [location index] map plus a list of always-extract
-  ! locations (any point whose schedule contains a negative value or is left
-  ! unspecified is considered "always extract").
+  ! At setup time the manager reads the per-point extraction schedule from the
+  ! configuration handler (which owns the parsing of "timesteps" and of the
+  ! legacy "timestep"/"nstep" spellings) and builds a step -> [location index]
+  ! map plus a list of always-extract locations (any point whose schedule
+  ! contains a negative value or is left unspecified is "always extract").
   !
   ! At run time consumers query:
   !   * get_points_at_step(step) -> compact array of ilocs to extract now
@@ -65,23 +63,19 @@ contains
 
 
   ! ------------------------------------------------------------------------
-  ! init: parse per-point timesteps and build the step -> [iloc] map.
+  ! init: read the per-point schedules and build the step -> [iloc] map.
   ! ------------------------------------------------------------------------
-  subroutine extraction_manager_init(self, plugin_config_points, nb_locations)
-    class(extraction_manager),               intent(inout) :: self
-    type(fckit_configuration),               intent(in)    :: plugin_config_points(:)
-    integer(kind=JPIM),                      intent(in)    :: nb_locations
+  subroutine extraction_manager_init(self, cfg)
+    class(extraction_manager), intent(inout) :: self
+    type(config_handler),      intent(in)    :: cfg
 
     integer(kind=JPIM) :: ipoint, istep, ii, count_at
+    integer(kind=JPIM) :: nb_locations
     integer(kind=JPIM) :: max_step_local
-    logical            :: found
 
     ! per-point parsed schedule
     type(step_list), allocatable :: point_steps(:)
     logical,         allocatable :: point_always(:)
-
-    integer(c_int32_t), allocatable :: steps_int32(:)
-    integer(c_int32_t)              :: scalar_int32
 
     integer(kind=JPIM) :: n_always
     character(len=512) :: msg
@@ -89,6 +83,7 @@ contains
     ! -- clean any prior state ------------------------------------------------
     call self%finalize()
 
+    nb_locations      = cfg%get_nb_points()
     self%nb_locations = nb_locations
 
     allocate(point_steps(nb_locations))
@@ -100,44 +95,19 @@ contains
     max_step_local = -1
     n_always       = 0
 
-    ! -- pass 1: parse each point's schedule ---------------------------------
+    ! -- pass 1: read each point's schedule ----------------------------------
     do ipoint = 1, nb_locations
 
-      ! Try the new list-of-ints form first.
-      found = plugin_config_points(ipoint)%get("timesteps", steps_int32)
-
-      if (.not.found) then
-        ! Fall back to the legacy scalar forms.
-        found = plugin_config_points(ipoint)%get("timestep", scalar_int32)
-        if (.not.found) then
-          found = plugin_config_points(ipoint)%get("nstep", scalar_int32)
-        endif
-        if (found) then
-          allocate(steps_int32(1))
-          steps_int32(1) = scalar_int32
-        endif
-      endif
-
-      if (.not.found) then
-        ! No schedule specified -> extract at every step.
+      if (cfg%get_point_extract_always(ipoint)) then
         point_always(ipoint) = .true.
         n_always = n_always + 1
       else
-        ! If any entry is negative, treat this point as "always extract"
-        ! and ignore the specific step entries.
-        if (any(steps_int32 < 0)) then
-          point_always(ipoint) = .true.
-          n_always = n_always + 1
-        else
-          ! copy step values (kind-convert c_int32_t -> JPIM); duplicates are
-          ! harmless because bucket membership is tested with `any(... == step)`.
-          allocate(point_steps(ipoint)%steps(size(steps_int32)))
-          point_steps(ipoint)%steps(:) = int(steps_int32, kind=JPIM)
-          if (size(point_steps(ipoint)%steps) > 0) then
-            max_step_local = max(max_step_local, maxval(point_steps(ipoint)%steps))
-          endif
+        ! duplicates are harmless because bucket membership is tested with
+        ! `any(... == step)`.
+        point_steps(ipoint)%steps = cfg%get_point_timesteps(ipoint)
+        if (size(point_steps(ipoint)%steps) > 0) then
+          max_step_local = max(max_step_local, maxval(point_steps(ipoint)%steps))
         endif
-        deallocate(steps_int32)
       endif
 
     enddo
@@ -187,7 +157,7 @@ contains
     do ipoint = 1, nb_locations
       if (point_always(ipoint)) then
         write(msg,'(A,I0,A)') "extraction_manager:   point ", ipoint, " -> every step"
-      else if (allocated(point_steps(ipoint)%steps)) then
+      else if (size(point_steps(ipoint)%steps) > 0) then
         call format_int_list(point_steps(ipoint)%steps, msg, &
           &                  "extraction_manager:   point ", ipoint)
       else

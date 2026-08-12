@@ -12,7 +12,7 @@
 # Test: multi-timestep extraction per point in the SCM plugin
 #
 # Each point in the config carries a "timesteps" list of ints (or the legacy
-# "timestep" scalar / no schedule at all).  APPEND_OUTPUT=1, so each active
+# "timestep" scalar / no schedule at all).  append_output=1, so each active
 # point produces a single NetCDF file with one time record per matching step.
 #
 # Config (plume-config-ifs-t159-multi-timesteps.json):

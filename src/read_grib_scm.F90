@@ -7,15 +7,12 @@
 ! granted to it by virtue of its status as an intergovernmental organisation nor
 ! does it submit to any jurisdiction.
 
-SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
+SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,INFO, &
  & spectral, spfields, gridpoints, gpfields)
 
 ! fieldset spfields for spectral
 ! fieldset gpfields for gridpoint
 
-!    lprognostic    I   .TRUE. if only prognostic variables are needed
-!    LAREA          I   .TRUE.  if lat-lon rectangle selection
-!                       .FALSE. if one or more points, via its coordinates
 
 use, intrinsic :: iso_C_binding
 use, intrinsic :: iso_fortran_env, only : int64
@@ -69,7 +66,6 @@ type(atlas_functionspace_StructuredColumns), intent(in) :: gridpoints
 type(atlas_functionspace_Spectral), intent(in) :: spectral
 
 TYPE(TINFO), intent(inout) :: INFO
-LOGICAL, intent(in) :: lprognostic,larea
 
 REAL(KIND=JPRB) :: ZINDEF
      
