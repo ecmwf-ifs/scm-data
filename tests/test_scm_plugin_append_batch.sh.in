@@ -9,23 +9,23 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-# Test: batched appended output (APPEND_OUTPUT=1 + APPEND_OUTPUT_NSTEPS=N)
+# Test: batched appended output (append_output=1 + append_output_nsteps=N)
 #
-# With APPEND_OUTPUT_NSTEPS=N the writer batches at most N steps per file, and
+# With append_output_nsteps=N the writer batches at most N steps per file, and
 # the file name carries the window of steps the file covers:
 #   scm_in_proc_<proc>_pt_<iloc>_step_<first>_to_<last>.nc
-# The windows are N*RUN_EVERY steps wide and anchored at the first step the
-# plugin runs at (the first multiple of RUN_EVERY >= INIT_STEP).
+# The windows are N*run_every steps wide and anchored at the first step the
+# plugin runs at (the first multiple of run_every >= init_step).
 #
 # Phase 1 (plume-config-ifs-t159-append-batch-test.json):
-#   RUN_EVERY=1, INIT_STEP=0 (default), APPEND_OUTPUT_NSTEPS=2 -> windows
+#   run_every=1, init_step=0 (default), append_output_nsteps=2 -> windows
 #   [0,1] [2,3] [4,5] [6,7]; driver runs steps 1..6.
 #     point 1  every step        -> 0_to_1:1  2_to_3:2  4_to_5:2  6_to_7:1
 #     point 2  timesteps=[1,3,5] -> 0_to_1:1  2_to_3:1  4_to_5:1
 #     point 3  timesteps=[2,4,6] ->           2_to_3:1  4_to_5:1  6_to_7:1
 #
 # Phase 2 (plume-config-ifs-t159-append-batch-stride-test.json):
-#   RUN_EVERY=3, INIT_STEP=4, APPEND_OUTPUT_NSTEPS=2 -> the plugin runs at
+#   run_every=3, init_step=4, append_output_nsteps=2 -> the plugin runs at
 #   steps 6, 9, 12; the anchor is step 6 and windows are 6 steps wide
 #   ([6,11] [12,17]); driver runs steps 1..12.
 #     points 1,2  every step -> 6_to_9:2   12_to_15:1
@@ -156,7 +156,7 @@ check_batches() {
 
 
 # ---------------------------------------------------------------------------
-# Phase 1: RUN_EVERY=1, APPEND_OUTPUT_NSTEPS=2, steps 1..6
+# Phase 1: run_every=1, append_output_nsteps=2, steps 1..6
 # ---------------------------------------------------------------------------
 run_driver @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_append_batch \
            plume-config-ifs-t159-append-batch-test.json 6
@@ -171,11 +171,11 @@ check_absent "scm_in_proc_${proc}_pt_00003_step_00000_to_00001.nc"
 
 check_file_count 10
 
-echo "Batched append checks (RUN_EVERY=1) passed."
+echo "Batched append checks (run_every=1) passed."
 
 
 # ---------------------------------------------------------------------------
-# Phase 2: RUN_EVERY=3, INIT_STEP=4, APPEND_OUTPUT_NSTEPS=2, steps 1..12
+# Phase 2: run_every=3, init_step=4, append_output_nsteps=2, steps 1..12
 # ---------------------------------------------------------------------------
 run_driver @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_append_batch_stride \
            plume-config-ifs-t159-append-batch-stride-test.json 12
@@ -183,9 +183,9 @@ run_driver @CMAKE_BINARY_DIR@/tests/tmpdir_scm_plugin_append_batch_stride \
 check_batches 1 "6:9:2" "12:15:1"
 check_batches 2 "6:9:2" "12:15:1"
 
-# nothing before the anchor step (first multiple of RUN_EVERY >= INIT_STEP)
+# nothing before the anchor step (first multiple of run_every >= init_step)
 check_absent "scm_in_proc_${proc}_pt_00001_step_00000_to_00005.nc"
 
 check_file_count 4
 
-echo "All batched append checks (APPEND_OUTPUT_NSTEPS) passed."
+echo "All batched append checks (append_output_nsteps) passed."

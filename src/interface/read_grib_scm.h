@@ -8,7 +8,7 @@
 ! does it submit to any jurisdiction.
 
 INTERFACE
-SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,LPROGNOSTIC,LAREA,INFO, &
+SUBROUTINE READ_GRIB_SCM(LSINGLE, NPROC, MYPROC, FILE,INFO, &
 		     & spectral, spfields, gridpoints, gpfields)
 
 use, intrinsic :: iso_C_binding
@@ -59,7 +59,6 @@ type(atlas_functionspace_StructuredColumns), intent(in) :: gridpoints
 type(atlas_functionspace_Spectral), intent(in)          :: spectral
 
 TYPE(TINFO), intent(inout) :: INFO
-LOGICAL, intent(in) :: lprognostic,larea
 
 end subroutine read_grib_scm
 END INTERFACE

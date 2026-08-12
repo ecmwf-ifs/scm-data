@@ -137,6 +137,7 @@ foreach(prec sp dp)
             ../wrt1c_nc.F90
             update_nodefield.F90
             fillvar_from_plume.F90
+            config_handler.F90
             extraction_manager.F90
             scm_nc_output.F90
             plugin_impl.F90            

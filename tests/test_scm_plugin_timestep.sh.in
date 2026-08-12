@@ -13,7 +13,7 @@
 #
 # Each point in the config carries a "timesteps" list of ints.  The plugin
 # must write an output NetCDF file for that point ONLY at the simulation
-# steps that appear in its list.  APPEND_OUTPUT=0, so a distinct file is
+# steps that appear in its list.  append_output=0, so a distinct file is
 # produced per (point, matching-step) pair.
 #
 # Config (plume-config-ifs-t159-timestep-test.json):

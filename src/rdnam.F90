@@ -7,15 +7,14 @@
 ! granted to it by virtue of its status as an intergovernmental organisation nor
 ! does it submit to any jurisdiction.
 
-SUBROUTINE RDNAM(LAREA,LPROGNOSTIC,DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
+SUBROUTINE RDNAM(DATAID,DELTA, NLEV, NSMAX, NSTEP, CGRID, &
  & PVAH, PVBH, KLOCMAX, PLAT, PLON, namelist_path)
 !-----------------------------------------------------------------------
-!     reads the namelist: 
-!         LAREA       O    .TRUE.       Select all points in lat-lon rectangle
-!                          .FALSE.      Select one or more points, via its coordinates
-!         LPROGNOSTIC O    .TRUE.       Process only prognostic variables
-!         DATAID      O    Text identifying the dataset (LAREA=.FALSE.)
-
+!     reads the namelist:
+!         DATAID      O    Text identifying the dataset
+!
+!     Locations are always selected as one or more points, via their
+!     coordinates (LAT/LON).
 !-----------------------------------------------------------------------
 use yomvar
 
@@ -24,7 +23,6 @@ implicit none
 INTEGER, PARAMETER :: JMAXPTS = 100
 INTEGER, PARAMETER :: JMAXLEV = 200
 
-LOGICAL, intent(out)   :: larea, lprognostic
 INTEGER(KIND=JPIM), intent(out) :: KLOCMAX
 INTEGER(KIND=JPIM), intent(out) :: NLEV, NSMAX, NSTEP
 
@@ -37,7 +35,11 @@ character(len=*), intent(in), optional :: namelist_path
 REAL(KIND=JPRB) :: LAT(JMAXPTS), LON(JMAXPTS)
 REAL(KIND=JPRB) :: DVALH(0:JMAXLEV), DVBH(0:JMAXLEV)  
 
-! prev
+! LPROGNOSTIC and the lat-lon rectangle bounds are still accepted in the
+! namelist (so that existing namelists keep reading), but they are ignored:
+! all variables found in the input are processed, and locations are always
+! selected as points.
+LOGICAL :: LPROGNOSTIC
 REAL(KIND=JPRB) :: LATN,LATS,LONW, LONE
 REAL(KIND=JPRB) :: TSTEP
 
@@ -66,7 +68,6 @@ CGRID = ' '
 ! distance from nearest
 DELTA=-999.
 LPROGNOSTIC=.TRUE.
-LAREA=.FALSE.
 DATAID='nocomments'
 
 ! read namelist from file
@@ -99,37 +100,31 @@ if( NLEV > -1 ) THEN
   pvbh(0:nlev) = DVBH(0:nlev)
 endif
 
-write(*,*) 'LATN,LATS,LONW,LONE', LATN,LATS,LONW,LONE
-
-IF (LATN.NE.-999. .AND. LATS.NE.-999. .AND. LONW.NE.-999. .AND. LONE.NE.-999) then
-  LAREA=.TRUE.
-  WRITE(6,*)'AREA'
-  WRITE(6,*)'LAREA : ', LAREA
-  WRITE(6,*)'LATN : ', LATN
-  WRITE(6,*)'LATS : ', LATS
-  WRITE(6,*)'LONW : ', LONW
-  WRITE(6,*)'LONE : ', LONE
-  WRITE(6,*)'LPROGNOSTIC : ', LPROGNOSTIC
-ELSE 
-  write(6,*)'POINT'
-  WRITE(6,*)'LAREA : ', LAREA
-  do j=1, JMAXPTS
-    if (lat(j) == -999.) exit
-    if (lon(j) == -999.) exit
-    write(6,*) 'LAT,LON= : ', lat(j),lon(j)
-  enddo
-  klocmax=j-1
-  write(6,*) j-1,' points'
-  if (klocmax == 0) then
-    write(6,*) 'One or more points need to be given'
-    stop "RDNAM"
-  endif
-  allocate(plon(klocmax))
-  allocate(plat(klocmax))
-  do k=1,klocmax
-    plon(k) = lon(k)
-    plat(k) = lat(k)
-  enddo
+IF (LATN.NE.-999. .OR. LATS.NE.-999. .OR. LONW.NE.-999. .OR. LONE.NE.-999.) then
+  write(6,*) 'LATN/LATS/LONW/LONE are ignored: only point selection is supported'
 ENDIF
+
+IF (.NOT.LPROGNOSTIC) then
+  write(6,*) 'LPROGNOSTIC=.FALSE. is ignored: all input variables are processed'
+ENDIF
+
+write(6,*)'POINT'
+do j=1, JMAXPTS
+  if (lat(j) == -999.) exit
+  if (lon(j) == -999.) exit
+  write(6,*) 'LAT,LON= : ', lat(j),lon(j)
+enddo
+klocmax=j-1
+write(6,*) j-1,' points'
+if (klocmax == 0) then
+  write(6,*) 'One or more points need to be given'
+  stop "RDNAM"
+endif
+allocate(plon(klocmax))
+allocate(plat(klocmax))
+do k=1,klocmax
+  plon(k) = lon(k)
+  plat(k) = lat(k)
+enddo
 
 END SUBROUTINE RDNAM

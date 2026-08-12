@@ -44,6 +44,7 @@ module plugin_impl_mod
   use yomvar
   use vert_coord_tables_mod
 
+  use config_handler_mod,     only : config_handler
   use scm_nc_output_mod,      only : output_writer
   use extraction_manager_mod, only : extraction_manager
   use process_plume_fields_mod, only : process_plume_fields
@@ -130,13 +131,12 @@ type(atlas_fvm_Method) :: fvm
 type(atlas_functionspace_NodeColumns) :: nodepoints
 type(atlas_functionspace_StructuredColumns) :: gridpoints
 
-LOGICAL :: LPROGNOSTIC
-LOGICAL :: LAREA
-INTEGER :: RUN_EVERY
-INTEGER :: INIT_STEP
-INTEGER :: FINAL_STEP
+! Plugin configuration: parsed and validated once in scm_setup, then read
+! through its getters. It owns every configuration key and every environment
+! variable the plugin looks at.
+type(config_handler) :: plugin_cfg
 
-! variable to detect an actual change in NSTEP, so that 
+! variable to detect an actual change in NSTEP, so that
 ! the plugin is not executed multiple times for the same step
 INTEGER(KIND=JPIM) :: NSTEP_OLD = -1
 
@@ -170,8 +170,6 @@ type(output_writer) :: nc_writer
 ! Extraction scheduler: maps each time step -> list of location indices to extract.
 type(extraction_manager) :: extract_mgr
 
-CHARACTER(len=:), allocatable :: dataid
-
 public :: scm_setup
 public :: scm_run
 public :: scm_teardown
@@ -182,7 +180,6 @@ contains
 
 subroutine scm_setup(plugin_config, model_data)
   type(fckit_configuration) :: plugin_config
-  type(fckit_configuration), allocatable :: plugin_config_points(:)
   type(plume_data) :: model_data
 
   type(atlas_Config) :: config
@@ -191,10 +188,8 @@ subroutine scm_setup(plugin_config, model_data)
   CHARACTER(LEN=10) :: FIELDNAME
 
   REAL(KIND=JPRB) :: ZDELTA
-  INTEGER :: LAREA_INT
-  INTEGER :: LPROGNOSTIC_INT
   LOGICAL :: LSINGLE
-  
+
   INTEGER(KIND=JPIM) :: I
   INTEGER(KIND=JPIM) :: J
   INTEGER(KIND=JPIM) :: JFLD
@@ -211,7 +206,6 @@ subroutine scm_setup(plugin_config, model_data)
   
   integer :: ifield
   integer :: ipoint
-  logical :: found
 
   ! if delta is not specified, use kdtree to find nearest point
   logical :: found_delta
@@ -229,9 +223,6 @@ subroutine scm_setup(plugin_config, model_data)
   INTEGER(KIND=c_int), POINTER :: ghost(:)
   REAL(KIND=c_double), POINTER :: lonlat(:,:)
   type(atlas_Field) :: lonlatField
-
-  character(1024) :: vtable_testing_namelist
-  integer :: vtable_testing_namelist_status
 
   type(atlas_Field) :: fieldtemp
 
@@ -307,94 +298,43 @@ subroutine scm_setup(plugin_config, model_data)
   input_fs = fields_srf(1)%functionspace()
   nlev = input_fs%levels()
 
-  ! read parameters from plugin-core configuration
-  found = plugin_config%get("LPROGNOSTIC", LPROGNOSTIC_INT)
-  if (.not.found) then
-    LPROGNOSTIC_INT = 1
-  endif
-  if (LPROGNOSTIC_INT == 1) then
-    LPROGNOSTIC = .true.
-  else
-    LPROGNOSTIC = .false.
-  endif
-  
-  found = plugin_config%get("LAREA", LAREA_INT)
-  if (.not.found) then
-    LAREA_INT = 0
-  endif
-  if (LAREA_INT == 1) then
-    LAREA = .true.
-  else
-    LAREA = .false.
-  endif
+  ! Read, validate and log the plugin configuration (plugin-core configuration
+  ! keys plus the environment variables the plugin honours). Every option is
+  ! read from the handler from here on.
+  call plugin_cfg%init(plugin_config)
 
-  ! Plugin run frequency
-  found = plugin_config%get("RUN_EVERY", RUN_EVERY)
-  if (.not.found) then
-    RUN_EVERY = 1
-  endif
-  if (RUN_EVERY < 1) then
-    write(msg,'(A,I0)') "RUN_EVERY must be >= 1, but is ", RUN_EVERY; call log%error(msg)
-    stop 1
-  endif
-
-  ! Plugin initial step
-  found = plugin_config%get("INIT_STEP", INIT_STEP)
-  if (.not.found) then
-    INIT_STEP = 0
-  endif
-
-  ! Plugin final step
-  found = plugin_config%get("FINAL_STEP", FINAL_STEP)
-  if (.not.found) then
-    FINAL_STEP = -1
-  endif
-
-  ! ID of data
-  found = plugin_config%get("DATAID", dataid)
-  if (.not.found) then
-    dataid = "plume-plugin-scm"
-  endif
-
-  ! max radius of search for nearest grid point
-  found_delta = plugin_config%get("DELTA", ZDELTA)
+  ! max radius of search for nearest grid point: without it the nearest point
+  ! is found with a kdtree search
+  found_delta = plugin_cfg%has_delta()
+  ZDELTA      = 0._JPRB
+  if (found_delta) ZDELTA = plugin_cfg%get_delta()
 
   STOP_PLUGIN_TIMER("scm_setup.config")
 
   START_PLUGIN_TIMER("scm_setup.vert_tables")
   ! vertical levels coefficients
   ! For testing only: read the vertical levels from namelist (for consistency)
-  call get_environment_variable("PLUME_SCM_PLUGIN_VERT_TABLES_TEST_NAMELIST", vtable_testing_namelist, status=vtable_testing_namelist_status)
-  if (vtable_testing_namelist_status == 0) then
-    write(msg,'(A,A)') "Reading vertical tables from namelist: ", trim(vtable_testing_namelist); call log%info(msg)
-    call get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH, PVBH)
+  if (plugin_cfg%has_vert_tables_namelist()) then
+    write(msg,'(A,A)') "Reading vertical tables from namelist: ", &
+      & trim(plugin_cfg%get_vert_tables_namelist()); call log%info(msg)
+    call get_vertical_tables_from_namelist(plugin_cfg%get_vert_tables_namelist(), NLEV, PVAH, PVBH)
   else
     call get_vertical_tables(NLEV, PVAH, PVBH)
   endif
   STOP_PLUGIN_TIMER("scm_setup.vert_tables")
 
   START_PLUGIN_TIMER("scm_setup.points")
-  ! point coordinates
-  found = plugin_config%get("points", plugin_config_points)
-  ! if no points are specified, then the plugin will not run
-  if (.not.found) then
-    write(msg,'(A)') "No points specified in plugin configuration, plugin will not run"; call log%info(msg)
-    nb_locations = 0
-    stop 1
-  endif
-  nb_locations = size(plugin_config_points)
+  ! point coordinates (the handler has already checked that there is at least
+  ! one point and that each one has valid coordinates)
+  nb_locations = plugin_cfg%get_nb_points()
 
   allocate(locations(nb_locations))
   allocate(zlat(NB_LOCATIONS))
   allocate(zlon(NB_LOCATIONS))
 
   do ipoint=1,nb_locations
-    found = plugin_config_points(ipoint)%get("lat", PT_LAT)
-    found = plugin_config_points(ipoint)%get("lon", PT_LON)
-
-    if( PT_LON < 0. ) then
-      PT_LON = 360. + PT_LON
-    endif
+    PT_LAT = plugin_cfg%get_point_lat(ipoint)
+    PT_LON = plugin_cfg%get_point_lon(ipoint)
 
     locations(ipoint)%RLONI = PT_LON
     locations(ipoint)%RLATI = PT_LAT
@@ -411,16 +351,11 @@ subroutine scm_setup(plugin_config, model_data)
   enddo
 
   ! Build the step -> [iloc] extraction schedule from the per-point config.
-  call extract_mgr%init(plugin_config_points, nb_locations)
+  call extract_mgr%init(plugin_cfg)
   STOP_PLUGIN_TIMER("scm_setup.points")
 
-  write(msg,'(A,I0)')   "nb_locations = ", nb_locations; call log%info(msg)
-  write(msg,'(A,F5.3)') "zdelta = ", zdelta; call log%info(msg)
+  ! the configuration itself (points included) has been logged by the handler
   write(msg,'(A,I0)')   "nlev = ", nlev; call log%info(msg)
-
-  do ipoint=1,nb_locations
-    write(msg,'(A,F10.3,A,F10.3)') "lat = ",zlat(ipoint), ", lon=", zlon(ipoint); call log%info(msg)
-  enddo
 
   !        2.   set up necessary info on gg and sh fields
   !             --------------------------------------------------------------
@@ -456,10 +391,10 @@ subroutine scm_setup(plugin_config, model_data)
   ! find the nearest grid point to each user specified lat/lon location
   START_PLUGIN_TIMER("scm_setup.nearest_distance")
   if ( .not. found_delta ) then
-    write(msg,'(A)') "No ZDELTA specified, using kdtree to find nearest point"; call log%info(msg)
+    write(msg,'(A)') "No delta specified, using kdtree to find nearest point"; call log%info(msg)
     call nearest_distance_kdtree(nb_nodes, ghost, lonlat, nb_locations, locations)
   else
-    write(msg,'(A,F8.4)') "ZDELTA = ", zdelta; call log%info(msg)
+    write(msg,'(A,F8.4)') "delta = ", zdelta; call log%info(msg)
     call nearest_distance(nb_nodes, ghost, lonlat, myproc, zdelta, nb_locations, locations)
   endif
   STOP_PLUGIN_TIMER("scm_setup.nearest_distance")
@@ -561,10 +496,10 @@ subroutine scm_setup(plugin_config, model_data)
 
 STOP_PLUGIN_TIMER("scm_setup.alloc_columns")
 
-! initialise the NetCDF output writer (reads APPEND_OUTPUT, APPEND_OUTPUT_NSTEPS
-! + PLUME_PLUGINS_OUTPUT_DIR; RUN_EVERY/INIT_STEP define the output batch windows)
+! initialise the NetCDF output writer (append_output, append_output_nsteps and
+! the output directory; run_every/init_step define the output batch windows)
 START_PLUGIN_TIMER("scm_setup.nc_init")
-call nc_writer%init(plugin_config, RUN_EVERY, INIT_STEP)
+call nc_writer%init(plugin_cfg)
 STOP_PLUGIN_TIMER("scm_setup.nc_init")
 
 START_PLUGIN_TIMER("scm_setup.create_node_fields")
@@ -693,15 +628,15 @@ INFO%DTIME = NSTEP * TSTEP ! time step in seconds
 STOP_PLUGIN_TIMER("scm_run.prologue")
 
 
-! Run the plugin only at every RUN_EVERY steps.
+! Run the plugin only at every run_every steps.
 ! Every early return below must stop "scm_run" first, otherwise the region is left
 ! open and the enclosing self-time accounting is wrong.
-if ( (MOD(NSTEP, RUN_EVERY) /= 0) .or. (NSTEP.lt.INIT_STEP) ) then
+if ( (MOD(NSTEP, plugin_cfg%get_run_every()) /= 0) .or. (NSTEP.lt.plugin_cfg%get_init_step()) ) then
   STOP_PLUGIN_TIMER("scm_run")
   return
 endif
 
-if ( (FINAL_STEP.ge.0) .and. (NSTEP.gt.FINAL_STEP) ) then
+if ( (plugin_cfg%get_final_step().ge.0) .and. (NSTEP.gt.plugin_cfg%get_final_step()) ) then
   STOP_PLUGIN_TIMER("scm_run")
   return
 endif
@@ -719,13 +654,11 @@ endif
 call log%info("SCM-PLUGIN executing step..")
 
 START_PLUGIN_TIMER("scm_run.fillvar_from_plume")
-if (.not.larea) then
-    do iloc=1, nb_locations
-      if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, NSTEP) ) then
-        call fillvar_from_plume(myproc, locations(iloc), fields_srf_set, param_ids_srf)
-      endif
-    enddo
-endif
+do iloc=1, nb_locations
+  if( myproc == locations(iloc)%iproc .and. extract_mgr%should_extract(iloc, NSTEP) ) then
+    call fillvar_from_plume(myproc, locations(iloc), fields_srf_set, param_ids_srf)
+  endif
+enddo
 STOP_PLUGIN_TIMER("scm_run.fillvar_from_plume")
 
 ! update all the SP fields into nodepoints
@@ -774,10 +707,8 @@ STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 
 START_PLUGIN_TIMER("scm_run.write_netcdf")
-if (.not.larea) then
-  call nc_writer%write(myproc, NSTEP, locations, nb_locations, &
-                     & PVAH, PVBH, dataid, nlev, INFO, extract_mgr)
-endif
+call nc_writer%write(myproc, NSTEP, locations, nb_locations, &
+                   & PVAH, PVBH, plugin_cfg%get_dataid(), nlev, INFO, extract_mgr)
 STOP_PLUGIN_TIMER("scm_run.write_netcdf")
 
 call log%info("SCM-PLUGIN step completed !")
@@ -886,6 +817,10 @@ subroutine scm_teardown(plugin_config, model_data)
   START_PLUGIN_TIMER("scm_teardown.extract_mgr_finalize")
   call extract_mgr%finalize()
   STOP_PLUGIN_TIMER("scm_teardown.extract_mgr_finalize")
+
+  START_PLUGIN_TIMER("scm_teardown.config_finalize")
+  call plugin_cfg%finalize()
+  STOP_PLUGIN_TIMER("scm_teardown.config_finalize")
 
   ! Close scm_teardown before reporting, so that no region is still open when the
   ! table is built (the report itself is not part of the measured work).

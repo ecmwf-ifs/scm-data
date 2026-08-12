@@ -9,11 +9,11 @@
 
 module scm_nc_output_mod
 
-  use fckit_log_module,           only : log
-  use fckit_configuration_module, only : fckit_configuration
+  use fckit_log_module, only : log
 
   use yomvar, only : JPIM, JPRB, TLOCATION, TINFO
 
+  use config_handler_mod,     only : config_handler
   use extraction_manager_mod, only : extraction_manager
 
 #ifdef WITH_SCM_PLUME_PLUGIN_PROFILER
@@ -46,13 +46,13 @@ module scm_nc_output_mod
   !     One file per (proc, location, step) - legacy behavior.
   type :: output_writer
     private
-    character(len=1024) :: output_dir     = ''
+    character(len=:), allocatable :: output_dir
     logical             :: has_output_dir = .false.
     logical             :: append_output  = .true.
     ! Maximum number of steps (time records) batched into one file.
     ! <= 0 means "no limit": a single file per (proc, location).
     integer(kind=JPIM)  :: nsteps_per_file = 0
-    ! Step spacing between two consecutive executed steps (RUN_EVERY) and
+    ! Step spacing between two consecutive executed steps (run_every) and
     ! first executed step: together they define the batch windows.
     integer(kind=JPIM)  :: step_stride     = 1
     integer(kind=JPIM)  :: anchor_step     = 0
@@ -65,85 +65,74 @@ module scm_nc_output_mod
 contains
 
 
-  ! run_every / init_step are the plugin RUN_EVERY and INIT_STEP settings: they
-  ! determine at which steps this writer is called and hence how the batch
-  ! windows are laid out when APPEND_OUTPUT_NSTEPS is used.
-  subroutine output_writer_init(self, plugin_config, run_every, init_step)
-    class(output_writer),        intent(inout) :: self
-    type(fckit_configuration),   intent(in)    :: plugin_config
-    integer,                     intent(in)    :: run_every
-    integer,                     intent(in)    :: init_step
+  ! Everything the writer needs comes from the configuration handler: the
+  ! append_output / append_output_nsteps options, and run_every / init_step,
+  ! which determine at which steps this writer is called and hence how the
+  ! batch windows are laid out when append_output_nsteps is used.
+  subroutine output_writer_init(self, cfg)
+    class(output_writer),  intent(inout) :: self
+    type(config_handler),  intent(in)    :: cfg
 
-    integer :: append_int
-    integer :: nsteps_int
-    integer :: env_status
-    logical :: found
+    integer(kind=JPIM) :: nsteps_int
     character(len=512) :: msg
 
-    ! APPEND_OUTPUT: 0 -> one file per step (legacy), 1 -> append to a single
-    ! file per (proc, location).  Default: append (1).
-    found = plugin_config%get("APPEND_OUTPUT", append_int)
-    if (found) then
-      self%append_output = (append_int /= 0)
-    else
-      self%append_output = .true.
-    endif
+    ! append_output: 0 -> one file per step (legacy), 1 -> append to a single
+    ! file per (proc, location).
+    self%append_output = cfg%get_append_output()
 
-    ! APPEND_OUTPUT_NSTEPS: maximum number of steps batched into one file when
-    ! appending.  Absent or <= 0 -> no limit (a single file per location).
-    found = plugin_config%get("APPEND_OUTPUT_NSTEPS", nsteps_int)
-    if (.not.found) nsteps_int = 0
+    ! append_output_nsteps: maximum number of steps batched into one file when
+    ! appending.  0 -> no limit (a single file per location).
+    nsteps_int = cfg%get_append_output_nsteps()
 
-    ! The plugin runs at the multiples of RUN_EVERY that are >= INIT_STEP: the
+    ! The plugin runs at the multiples of run_every that are >= init_step: the
     ! windows are anchored at the first of those steps and are step_stride
     ! apart, so all points share the same file boundaries.
-    self%step_stride = max(1, int(run_every, kind=JPIM))
-    self%anchor_step = max(0, int(init_step, kind=JPIM))
+    self%step_stride = max(1_JPIM, cfg%get_run_every())
+    self%anchor_step = max(0_JPIM, cfg%get_init_step())
     if (mod(self%anchor_step, self%step_stride) /= 0) then
       self%anchor_step = (self%anchor_step / self%step_stride + 1) * self%step_stride
     endif
 
     if (self%append_output) then
-      self%nsteps_per_file = max(0, int(nsteps_int, kind=JPIM))
+      self%nsteps_per_file = max(0_JPIM, nsteps_int)
       ! A window spans nsteps_per_file*step_stride steps: fall back to a single
       ! file rather than overflowing on absurdly large batch sizes.
       if (self%nsteps_per_file > huge(self%nsteps_per_file) / self%step_stride) then
-        write(msg,'(A,I0,A)') "scm_nc_output: APPEND_OUTPUT_NSTEPS=", nsteps_int, &
+        write(msg,'(A,I0,A)') "scm_nc_output: append_output_nsteps=", nsteps_int, &
           & " is too large - batching disabled (single file per location)"
         call log%warning(msg)
         self%nsteps_per_file = 0
       endif
     else
-      if (nsteps_int > 0) then
-        write(msg,'(A)') "scm_nc_output: APPEND_OUTPUT_NSTEPS ignored because APPEND_OUTPUT=0"
-        call log%warning(msg)
-      endif
+      ! append_output_nsteps is meaningless without appending; the handler
+      ! already warned about the combination.
       self%nsteps_per_file = 0
     endif
 
     if (self%append_output) then
       if (self%nsteps_per_file > 0) then
         write(msg,'(A,I0,A,I0,A,I0,A)') &
-          & "scm_nc_output: APPEND_OUTPUT=1, APPEND_OUTPUT_NSTEPS=", self%nsteps_per_file, &
+          & "scm_nc_output: append_output=1, append_output_nsteps=", self%nsteps_per_file, &
           & " - up to ", self%nsteps_per_file, " steps per file per (proc, location), windows of ", &
           & self%nsteps_per_file * self%step_stride, " steps"
       else
-        write(msg,'(A)') "scm_nc_output: APPEND_OUTPUT=1 - one file per (proc, location)"
+        write(msg,'(A)') "scm_nc_output: append_output=1 - one file per (proc, location)"
       endif
     else
-      write(msg,'(A)') "scm_nc_output: APPEND_OUTPUT=0 - one file per (proc, location, step)"
+      write(msg,'(A)') "scm_nc_output: append_output=0 - one file per (proc, location, step)"
     endif
     call log%info(msg)
 
-    ! Output directory taken from the PLUME_PLUGINS_OUTPUT_DIR env variable.
-    call get_environment_variable("PLUME_PLUGINS_OUTPUT_DIR", self%output_dir, status=env_status)
-    self%has_output_dir = (env_status == 0)
+    ! Output directory: resolved by the configuration handler from the
+    ! environment (see PLUME_PLUGINS_OUTPUT_DIR).
+    self%has_output_dir = cfg%has_output_dir()
+    self%output_dir     = cfg%get_output_dir()
 
     if (self%has_output_dir) then
       write(msg,'(A,A)') "scm_nc_output: output directory = ", trim(self%output_dir)
       call log%info(msg)
     else
-      write(msg,'(A)') "scm_nc_output: PLUME_PLUGINS_OUTPUT_DIR not set, writing to current directory"
+      write(msg,'(A)') "scm_nc_output: no output directory set, writing to the current directory"
       call log%info(msg)
     endif
 
@@ -220,9 +209,8 @@ contains
   subroutine output_writer_finalize(self)
     class(output_writer), intent(inout) :: self
 
-    ! Nothing to release at present; kept for symmetry / future cleanup.
     self%has_output_dir  = .false.
-    self%output_dir      = ''
+    if (allocated(self%output_dir)) deallocate(self%output_dir)
     self%nsteps_per_file = 0
     self%step_stride     = 1
     self%anchor_step     = 0
@@ -288,7 +276,7 @@ contains
     offset = nstep - self%anchor_step
 
     ! Floor division, so that steps before the anchor (points explicitly
-    ! scheduled below INIT_STEP never reach here, but be safe) still map to a
+    ! scheduled below init_step never reach here, but be safe) still map to a
     ! well-defined window.
     if (offset >= 0) then
       ibatch = offset / window
