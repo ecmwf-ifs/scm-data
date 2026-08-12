@@ -1,7 +1,6 @@
 &NAMUS
   LAT={lat},
   LON={lon},
-  lprognostic={prognostic},
   TSTEP  = {tstep},
   DATAID = "{dataid}",
   NSMAX  = {res},

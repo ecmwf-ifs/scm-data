@@ -9,16 +9,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-# Test: RUN_EVERY step filtering in the SCM plugin
+# Test: run_every step filtering in the SCM plugin
 #
-# The plugin is configured with "RUN_EVERY": 4, so scm_run only executes at
+# The plugin is configured with "run_every": 4, so scm_run only executes at
 # simulation steps that are multiples of 4.  The points do NOT specify any
 # "timesteps"/"timestep", so each point is extracted at every step the plugin
-# actually runs.  With APPEND_OUTPUT=0, a distinct file is produced per
+# actually runs.  With append_output=0, a distinct file is produced per
 # (point, executed-step) pair.
 #
 # Config (plume-config-ifs-t159-run-every-test.json):
-#   RUN_EVERY = 4
+#   run_every = 4
 #   5 points, none with an explicit extraction schedule
 #
 # The driver is run for 16 steps (steps 1 .. 16).  Because the plugin only
@@ -88,7 +88,7 @@ proc=00001
 # Points 1..5 from plume-config-ifs-t159-run-every-test.json.
 point_ids=(1 2 3 4 5)
 
-# With RUN_EVERY=4 over 16 steps, the plugin executes at these steps only.
+# With run_every=4 over 16 steps, the plugin executes at these steps only.
 run_every=4
 n_steps=16
 
@@ -111,4 +111,4 @@ for pid in "${point_ids[@]}"; do
     check_absent "scm_in_proc_${proc}_pt_${pid_5d}.nc"
 done
 
-echo "All RUN_EVERY step-filter checks passed."
+echo "All run_every step-filter checks passed."

@@ -42,6 +42,9 @@ use grib_fields_provider_mod, only : grib_fields_provider
 use plugin_utils_mod, only : n_fields
 use plugin_utils_mod, only : field_names
 
+! the plugin configuration handler owns the environment variables
+use config_handler_mod, only : config_env_plume_config_file
+
 implicit none
 
 private
@@ -53,9 +56,9 @@ type(plume_data) :: data_from_plume
 ! Provider of fields for Plume
 type(grib_fields_provider) :: fld_provider
 
-! plume-config and plugin-config 
+! plume-config and plugin-config
 ! needed by the driver to setup the GRIB fields
-character(1024) :: plume_config_file
+character(len=:), allocatable :: plume_config_file
 type(fckit_configuration) :: plume_config
 type(fckit_configuration), allocatable :: plugin_configs(:)
 type(fckit_configuration) :: scm_plugin_config
@@ -144,7 +147,7 @@ subroutine setup()
 
   type(fckit_configuration) :: requested_data_catalogue
   integer :: ifield
-  integer :: config_env_status
+  logical :: found_config_file
   character(512) :: msg
 
   call plume_check(plume_initialise())
@@ -156,7 +159,11 @@ subroutine setup()
   call fld_provider%initialise()
 
   ! get plume configuration from env variable
-  call get_environment_variable("PLUME_CONFIG_FILE", plume_config_file, status=config_env_status)
+  call config_env_plume_config_file(plume_config_file, found_config_file)
+  if (.not.found_config_file) then
+    error stop "PLUME_CONFIG_FILE is not set: it must point to the plume configuration file"
+  endif
+  write(msg,'(A,A)') "plume configuration file: ", plume_config_file; call log%info(msg)
 
   ! offer simulation step
   call plume_check(offers%offer_int("NSTEP", "always", "none"))
@@ -234,12 +241,6 @@ subroutine run( return_code )
   
   logical :: LSINGLE
   
-  logical :: LAREA
-  LOGICAL :: LAREA_INT
-
-  logical :: LPROGNOSTIC
-  INTEGER :: LPROGNOSTIC_INT
-
   INTEGER(KIND=JPIM) :: nsmax
   
   INTEGER(KIND=JPIM) :: nstep
@@ -307,9 +308,7 @@ subroutine run( return_code )
   MYPROC = mpi_comm%rank() + 1 
 
 
-  CALL RDNAM(LAREA, &
-             LPROGNOSTIC, &
-             dataid, &
+  CALL RDNAM(dataid, &
              zdelta, &
              nlev, &
              nsmax, &
@@ -358,13 +357,13 @@ subroutine run( return_code )
   write(file,'(A)') 'sfc_grib'
   sfcfields = atlas_FieldSet("gridpoints")
   LSINGLE=.FALSE.
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,sfcfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,INFO,spectral,spfields,gridpoints,sfcfields)
   
   ! read upper air fieldset (gridpoint)
   file=' '
   write(file,'(A)') 'cld_grib '
   gpfields = atlas_FieldSet("gridpoints")
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,gpfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,INFO,spectral,spfields,gridpoints,gpfields)
   
   ! Setup spectral transforms
   trans = atlas_Trans(grid,nsmax)
@@ -375,7 +374,7 @@ subroutine run( return_code )
   file=' '
   write(file,'(A)') 'spec_grib '
   spfields = atlas_FieldSet("spectral")
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,file,INFO,spectral,spfields,dummy,gpdummy)
   
   write(msg,'(A)') " finished I/O"; call log%info(msg)
   

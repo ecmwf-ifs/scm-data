@@ -251,12 +251,16 @@ subroutine get_vertical_tables_from_namelist(vtable_testing_namelist, NLEV, PVAH
 
     implicit none
 
-    character(256) :: vtable_testing_namelist
-        
+    character(len=*), intent(in) :: vtable_testing_namelist
+
+
     INTEGER, PARAMETER :: JMAXPTS = 100
     INTEGER, PARAMETER :: JMAXLEV = 200
 
-    LOGICAL :: larea, lprognostic
+    ! Only the vertical coefficient tables are of interest here. The remaining
+    ! namelist entries have to stay declared so that a complete namelist still
+    ! reads, but their values are not used.
+    LOGICAL :: lprognostic
     INTEGER(KIND=JPIM) :: KLOCMAX, NSMAX, NSTEP
 
     character(len=30) :: dataid, cgrid

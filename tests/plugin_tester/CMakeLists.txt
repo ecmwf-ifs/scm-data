@@ -20,7 +20,10 @@ ecbuild_add_executable(
 
         # plugin sources
         ../../src/plume-plugin-scm/plugin_utils.F90
-        
+        # the plugin configuration handler owns the environment variables the
+        # driver needs too (PLUME_CONFIG_FILE)
+        ../../src/plume-plugin-scm/config_handler.F90
+
         # common sources
         ../../src/rdnam.F90
         ../../src/fillvar.F90

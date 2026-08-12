@@ -65,7 +65,7 @@ character(len=30) :: dataid, cgrid
 character(len=10) :: fieldname
 
 REAL(KIND=JPRB) :: zdelta
-logical   :: LAREA, lprognostic, LSINGLE
+logical   :: LSINGLE
 INTEGER(KIND=JPIM) :: nsmax, nstep, I, J, jfld, ilev, iloc, isize, nb_locations, nb_nodes, nlev, iparam, nlocmax
 INTEGER(KIND=JPIM) :: NPROC, MYPROC
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:), PVBH(:)
@@ -104,14 +104,15 @@ MYPROC = mpi_comm%rank() + 1
 
 ! need to initialize A,Bs from vtable added to namelist
 
-! at the moment we support only points, i.e. larea=false
+! only point selection is supported: locations come from the LAT/LON namelist
+! entries
 
 ! read namelist
 if (present(namelist_file)) then
-  call RDNAM(LAREA,LPROGNOSTIC,dataid, zdelta, nlev, nsmax, nstep, cgrid, &
+  call RDNAM(dataid, zdelta, nlev, nsmax, nstep, cgrid, &
  & pvah, pvbh, nb_locations, zlat, zlon, namelist_file)
 else
-  call RDNAM(LAREA,LPROGNOSTIC,dataid, zdelta, nlev, nsmax, nstep, cgrid, &
+  call RDNAM(dataid, zdelta, nlev, nsmax, nstep, cgrid, &
  & pvah, pvbh, nb_locations, zlat, zlon)
 endif
 
@@ -198,28 +199,26 @@ gridpoints = atlas_functionspace_StructuredColumns(grid)
 sfcfields = atlas_FieldSet("gridpoints")
 LSINGLE=.FALSE.
 if (present(sfc_grib)) then
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,sfc_grib,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,sfcfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,sfc_grib,INFO,spectral,spfields,gridpoints,sfcfields)
 else
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,'sfc_grib',LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,sfcfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,'sfc_grib',INFO,spectral,spfields,gridpoints,sfcfields)
 endif
 
-if (.not.larea) then
 !!!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(iloc)
-  do iloc=1, nb_locations
-    if( myproc == locations(iloc)%iproc ) then
-      ! fill sfc variables      
-      call fillvar(myproc,locations(iloc),sfcfields)
-    endif
-  enddo
+do iloc=1, nb_locations
+  if( myproc == locations(iloc)%iproc ) then
+    ! fill sfc variables
+    call fillvar(myproc,locations(iloc),sfcfields)
+  endif
+enddo
 !!!$OMP END PARALLEL DO
-endif
 
 ! read upper air fieldset (gridpoint)
 gpfields = atlas_FieldSet("gridpoints")
 if (present(cld_grib)) then
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,cld_grib,LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,gpfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,cld_grib,INFO,spectral,spfields,gridpoints,gpfields)
 else
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,'cld_grib',LPROGNOSTIC,LAREA,INFO,spectral,spfields,gridpoints,gpfields)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,'cld_grib',INFO,spectral,spfields,gridpoints,gpfields)
 endif
 
 
@@ -231,9 +230,9 @@ write(msg,'(A,I0)') "spectral%truncation() = ",spectral%truncation(); call log%i
 ! read upper air fieldset (spectral)
 spfields = atlas_FieldSet("spectral")
 if (present(spec_grib)) then
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,spec_grib,LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,spec_grib,INFO,spectral,spfields,dummy,gpdummy)
 else
-  call read_grib_scm(LSINGLE,NPROC,MYPROC,'spec_grib',LPROGNOSTIC,LAREA,INFO,spectral,spfields,dummy,gpdummy)
+  call read_grib_scm(LSINGLE,NPROC,MYPROC,'spec_grib',INFO,spectral,spfields,dummy,gpdummy)
 endif
 
 
@@ -299,23 +298,21 @@ call compute_fields(nproc,myproc,nb_locations,locations(1:nb_locations),nlev,&
 do iloc=1, nb_locations
   if( myproc == locations(iloc)%iproc ) then
     ! netcdf write this location from this processor
-    if (.not.larea) then
-      write(msg,'(A)') " setting up output fields to netcdf  "; call log%info(msg)
-!      write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%info(msg)
-!      write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%info(msg)
-!      write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%info(msg)
-!      write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%info(msg)
-!      write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%info(msg)
-      
-      ! setup output netcdf file
-      write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',0,'.nc'
-      CALL SU_WRT_NC (nc_filename,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
+    write(msg,'(A)') " setting up output fields to netcdf  "; call log%info(msg)
+!    write(msg,'(A,I0)') " loc processor ", locations(iloc)%IPROC; call log%info(msg)
+!    write(msg,'(A,I0)') " loc knode ", locations(iloc)%ILOC; call log%info(msg)
+!    write(msg,'(A,F8.4)') " loc latitude ", locations(iloc)%RLATI; call log%info(msg)
+!    write(msg,'(A,F8.4)') " loc longitude ", locations(iloc)%RLONI; call log%info(msg)
+!    write(msg,'(A,F8.4)') " loc pressure ", locations(iloc)%PP%PLNSP; call log%info(msg)
 
-      ! write output fields to netcdf
-      write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE ; call log%info(msg)
-      CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
-      
-    endif
+    ! setup output netcdf file
+    write(nc_filename,"(A,I5.5,A,I5.5,A,I5.5,A)") 'scm_in_proc_',myproc,'_pt_',iloc,'_step_',0,'.nc'
+    CALL SU_WRT_NC (nc_filename,PVAH,PVBH,dataid,locations(iloc)%IFILE_ID,nlev)
+
+    ! write output fields to netcdf
+    write(msg,'(A,I0,1X,I0)') " writing output fields to netcdf  ", INFO%ISTEP, INFO%IDATE ; call log%info(msg)
+    CALL WRT1C_NC(locations(iloc),PVAH,PVBH,INFO,locations(iloc)%IFILE_ID,nlev)
+
   endif
 enddo
 write(msg,'(A)') " finished, cleaning up! "; call log%info(msg)

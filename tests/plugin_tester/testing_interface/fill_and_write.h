@@ -18,7 +18,6 @@ subroutine fill_And_write(INFO, &
                           lonlat, &
                           myproc, &
                           zdelta, &
-                          LAREA, &
                           PVAH, &
                           PVBH, &
                           DATAID, &
@@ -56,7 +55,6 @@ INTEGER(KIND=c_int), POINTER, intent(IN)  :: ghost(:)
 REAL(KIND=c_double), POINTER,  intent(IN) :: lonlat(:,:)
 INTEGER(KIND=JPIM), intent(IN) :: myproc
 REAL(KIND=JPRB), intent(IN) :: zdelta
-logical :: LAREA
 REAL(KIND=JPRB), ALLOCATABLE :: PVAH(:)
 REAL(KIND=JPRB), ALLOCATABLE :: PVBH(:)
 CHARACTER(LEN=30) :: DATAID

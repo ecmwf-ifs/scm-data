@@ -9,9 +9,9 @@
 # granted to it by virtue of its status as an intergovernmental organisation nor
 # does it submit to any jurisdiction.
 
-# Test: per-point multi-timestep filtering in the SCM plugin, APPEND_OUTPUT=1 mode
+# Test: per-point multi-timestep filtering in the SCM plugin, append_output=1 mode
 #
-# Same setup as test_scm_plugin_timestep, but with APPEND_OUTPUT=1 so that
+# Same setup as test_scm_plugin_timestep, but with append_output=1 so that
 # each point produces a single file across the run.  Each point still has an
 # explicit list of target timesteps, so the file must contain exactly
 # size(timesteps) time records (no _step_XXXXX_ suffix in the filename).
@@ -144,4 +144,4 @@ for pdef in "${point_defs[@]}"; do
     done
 done
 
-echo "All per-point multi-timestep-filter checks (APPEND_OUTPUT=1) passed."
+echo "All per-point multi-timestep-filter checks (append_output=1) passed."
