@@ -31,46 +31,33 @@ fi
 
 cd $tmpdir_tests
 
-# If in DEBUG mode, then use link to files (to avoid too long argument string)
-
-if [[ @CMAKE_BUILD_TYPE@ == "Debug" ]]; then
-
-    if [ ! -e cld_grib ]; then
-        ln -s $input_data_dir/cld_grib_t159 cld_grib
-    else
-        echo "Link cld_grib already exists, not creating.."
-    fi
-
-    if [ ! -e sfc_grib ]; then
-        ln -s $input_data_dir/sfc_grib_t159 sfc_grib
-    else
-        echo "Link sfc_grib already exists, not creating.."
-    fi
-
-    if [ ! -e spec_grib ]; then
-        ln -s $input_data_dir/spec_grib_t159 spec_grib
-    else
-        echo "Link spec_grib already exists, not creating.."
-    fi
-
-    if [ ! -e namelist_1c ]; then
-        ln -s $input_data_dir/namelist_1c_t159 namelist_1c
-    else
-        echo "Link namelist_1c already exists, not creating.."
-    fi
-
-    # Run the scm-data
-    $exedir/getini1c_cli sfc_grib cld_grib spec_grib namelist_1c
-
+# Use link to files (to avoid too long argument strings)
+if [ ! -e cld_grib ]; then
+    ln -s $input_data_dir/cld_grib_t159 cld_grib
 else
-    # use full path to files
-    $exedir/getini1c_cli \
-      $input_data_dir/sfc_grib_t159 \
-      $input_data_dir/cld_grib_t159 \
-      $input_data_dir/spec_grib_t159 \
-      $input_data_dir/namelist_1c_t159
+    echo "Link cld_grib already exists, not creating.."
 fi
 
+if [ ! -e sfc_grib ]; then
+    ln -s $input_data_dir/sfc_grib_t159 sfc_grib
+else
+    echo "Link sfc_grib already exists, not creating.."
+fi
+
+if [ ! -e spec_grib ]; then
+    ln -s $input_data_dir/spec_grib_t159 spec_grib
+else
+    echo "Link spec_grib already exists, not creating.."
+fi
+
+if [ ! -e namelist_1c ]; then
+    ln -s $input_data_dir/namelist_1c_t159 namelist_1c
+else
+    echo "Link namelist_1c already exists, not creating.."
+fi
+
+# Run the scm-data
+$exedir/getini1c_cli sfc_grib cld_grib spec_grib namelist_1c
 
 # Compare NetCDF files against reference files
 for out_file_id in $(seq 1 1 12); do
