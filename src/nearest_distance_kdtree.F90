@@ -141,7 +141,7 @@ do ibatch=1,nb_batches
   max_pidx_in_batch = min(min_pidx_in_batch+batch_size-1, nb_locations)
   nb_batch_points = max_pidx_in_batch - min_pidx_in_batch + 1
 
-  nearest_dist_batchpts_local = HUGE(1.0e30_jprb)
+  nearest_dist_batchpts_local = HUGE(1.0_jprb)
   nearest_dist_batchpts_local(1:nb_batch_points) = nearest_dist_allpts_local(min_pidx_in_batch:max_pidx_in_batch)
 
   ! all gather the distances for this batch
