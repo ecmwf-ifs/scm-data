@@ -63,7 +63,7 @@ if [[ @CMAKE_BUILD_TYPE@ == "Debug" ]]; then
     $exedir/getini1c_cli sfc_grib cld_grib spec_grib namelist_1c
 
 else
-    # use full path to files (to avoid too long argument string)
+    # use full path to files
     $exedir/getini1c_cli \
       $input_data_dir/sfc_grib_t159 \
       $input_data_dir/cld_grib_t159 \
