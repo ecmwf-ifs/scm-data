@@ -9,9 +9,9 @@
                 "dataid": "data_ifs_test_t21",
                 "delta" : 6.0,
                 "points": [
-                    { "id": 0, "lat": 33.33, "lon": 7.77 },
-                    { "id": 1, "lat": 44.44, "lon": 8.88 },
-                    { "id": 2, "lat": 66.66, "lon": 9.99 }
+                    { "lat": 33.33, "lon": 7.77, "description": "test point over northern Africa" },
+                    { "lat": 44.44, "lon": 8.88 },
+                    { "lat": 66.66, "lon": 9.99 }
                 ]   
             }   
         }   

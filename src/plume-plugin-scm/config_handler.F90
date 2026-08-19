@@ -48,8 +48,8 @@ module config_handler_mod
   character(len=*), parameter :: KEY_POINTS               = "points"
 
   ! points entry keys
-  character(len=*), parameter :: KEY_ID                   = "id"
   character(len=*), parameter :: KEY_NAME                 = "name"
+  character(len=*), parameter :: KEY_DESCRIPTION          = "description"
   character(len=*), parameter :: KEY_LAT                  = "lat"
   character(len=*), parameter :: KEY_LON                  = "lon"
   character(len=*), parameter :: KEY_TIMESTEPS            = "timesteps"
@@ -63,7 +63,7 @@ module config_handler_mod
     & KEY_DATAID, KEY_DELTA, KEY_APPEND_OUTPUT, KEY_APPEND_OUTPUT_NSTEPS, KEY_POINTS ]
 
   character(len=MAX_KEY_LEN), parameter :: POINT_KEYS(7) = [ character(len=MAX_KEY_LEN) :: &
-    & KEY_ID, KEY_NAME, KEY_LAT, KEY_LON, KEY_TIMESTEPS, KEY_TIMESTEP, KEY_NSTEP ]
+    & KEY_NAME, KEY_DESCRIPTION, KEY_LAT, KEY_LON, KEY_TIMESTEPS, KEY_TIMESTEP, KEY_NSTEP ]
 
   ! ------------------------------------------------------------------------
   ! Environment variables read by the plugin.
@@ -109,8 +109,9 @@ module config_handler_mod
   ! ------------------------------------------------------------------------
   type :: scm_point_config
     private
-    integer(kind=JPIM)              :: id  = -1
     character(len=:), allocatable   :: name
+    ! Optional free-text description, for readability / traceability only.
+    character(len=:), allocatable   :: description
     real(kind=JPRB)                 :: lat = 0.0_JPRB
     ! Longitude wrapped to [0, 360) - the model grid convention.
     real(kind=JPRB)                 :: lon = 0.0_JPRB
@@ -171,8 +172,8 @@ module config_handler_mod
 
     ! getters: points
     procedure, pass(self) :: get_nb_points
-    procedure, pass(self) :: get_point_id
     procedure, pass(self) :: get_point_name
+    procedure, pass(self) :: get_point_description
     procedure, pass(self) :: get_point_lat
     procedure, pass(self) :: get_point_lon
     procedure, pass(self) :: get_point_timesteps
@@ -315,7 +316,6 @@ contains
 
     integer(kind=c_int32_t)              :: scalar_step
     integer(kind=c_int32_t), allocatable :: steps(:)
-    integer(kind=JPIM)                   :: id
     logical                              :: found
     character(len=64)                    :: context
     character(len=512)                   :: msg
@@ -326,11 +326,11 @@ contains
     call kidx%warn_unknown(POINT_KEYS, trim(context))
 
     ! -- identification (optional, used for logging only) -------------------
-    id = get_int_key(point_config, kidx, KEY_ID, -1_JPIM)
-    point%id = id
-
     found = config_get(point_config, kidx, KEY_NAME, point%name)
     if (.not.found) point%name = ""
+
+    found = config_get(point_config, kidx, KEY_DESCRIPTION, point%description)
+    if (.not.found) point%description = ""
 
     ! -- coordinates (required) ---------------------------------------------
     if (.not. config_get(point_config, kidx, KEY_LAT, point%lat)) then
@@ -422,12 +422,15 @@ contains
     write(msg,'(A,I0)')  "config_handler:   "//KEY_POINTS//" = ", self%nb_points
     call log%info(msg)
     do ipoint = 1, self%nb_points
-      write(msg,'(A,I0,A,I0,2(A,F10.3),A)') "config_handler:     point ", ipoint, &
-        & " ("//KEY_ID//"=", self%points(ipoint)%id, &
-        & ", "//KEY_LAT//"=", self%points(ipoint)%lat, &
+      write(msg,'(A,I0,2(A,F10.3),A)') "config_handler:     point ", ipoint, &
+        & " ("//KEY_LAT//"=", self%points(ipoint)%lat, &
         & ", "//KEY_LON//"=", self%points(ipoint)%lon, &
         & ") "//trim(self%points(ipoint)%name)
       call log%info(msg)
+      if (len_trim(self%points(ipoint)%description) > 0) then
+        call log%info("config_handler:       "//KEY_DESCRIPTION//": " &
+          & //trim(self%points(ipoint)%description))
+      endif
     enddo
 
     if (self%output_dir_is_set) then
@@ -454,8 +457,9 @@ contains
 
     if (allocated(self%points)) then
       do ipoint = 1, size(self%points)
-        if (allocated(self%points(ipoint)%timesteps)) deallocate(self%points(ipoint)%timesteps)
-        if (allocated(self%points(ipoint)%name))      deallocate(self%points(ipoint)%name)
+        if (allocated(self%points(ipoint)%timesteps))   deallocate(self%points(ipoint)%timesteps)
+        if (allocated(self%points(ipoint)%name))        deallocate(self%points(ipoint)%name)
+        if (allocated(self%points(ipoint)%description)) deallocate(self%points(ipoint)%description)
       enddo
       deallocate(self%points)
     endif
@@ -555,15 +559,6 @@ contains
   end function get_nb_points
 
 
-  function get_point_id(self, ipoint) result(value)
-    class(config_handler), intent(in) :: self
-    integer(kind=JPIM),    intent(in) :: ipoint
-    integer(kind=JPIM) :: value
-    call check_point_index(self, ipoint, "get_point_id")
-    value = self%points(ipoint)%id
-  end function get_point_id
-
-
   function get_point_name(self, ipoint) result(value)
     class(config_handler), intent(in) :: self
     integer(kind=JPIM),    intent(in) :: ipoint
@@ -575,6 +570,20 @@ contains
       value = ""
     endif
   end function get_point_name
+
+
+  ! Optional free-text description of the point ("" when not given).
+  function get_point_description(self, ipoint) result(value)
+    class(config_handler), intent(in) :: self
+    integer(kind=JPIM),    intent(in) :: ipoint
+    character(len=:), allocatable :: value
+    call check_point_index(self, ipoint, "get_point_description")
+    if (allocated(self%points(ipoint)%description)) then
+      value = self%points(ipoint)%description
+    else
+      value = ""
+    endif
+  end function get_point_description
 
 
   function get_point_lat(self, ipoint) result(value)
