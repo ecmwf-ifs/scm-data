@@ -74,8 +74,8 @@ records when the point is only extracted at some of the steps of the window
 
 | Option | Type | Description | Default |
 |---|---|---|---|
-| `id` | int | Point identifier (used for logging only) | `-1` |
 | `name` | string | Optional point name (for readability) | - |
+| `description` | string | Optional free-text description of the point (for readability / traceability; echoed in the configuration log) | - |
 | `lat` | real | Latitude of the point, within `[-90, 90]` (required) | - |
 | `lon` | real | Longitude of the point, within `[-360, 360]` (required; negative values are wrapped to 0-360) | - |
 | `timesteps` | array of int | List of time steps at which this point is extracted (preferred form) | always extract |
@@ -111,9 +111,9 @@ Extracting data from a small number of points, at every time step the plugin run
                 "dataid": "data_ifs_test_t21",
                 "delta": 6.0,
                 "points": [
-                    { "id": 0, "lat": 33.33, "lon": 7.77 },
-                    { "id": 1, "lat": 44.44, "lon": 8.88 },
-                    { "id": 2, "lat": 66.66, "lon": 9.99 }
+                    { "lat": 33.33, "lon": 7.77 },
+                    { "lat": 44.44, "lon": 8.88, "name": "point B" },
+                    { "lat": 66.66, "lon": 9.99, "name": "point C", "description": "reference site for the T21 test" }
                 ]
             }
         }
@@ -134,9 +134,9 @@ Extracting data from a few points, each one only at specific time steps:
                 "dataid": "test_timestep_filter",
                 "delta": 0.75,
                 "points": [
-                    { "id": 1, "lat": 11.11, "lon": 22.22, "timesteps": [1, 3, 5] },
-                    { "id": 2, "lat": 33.33, "lon": 44.44, "timesteps": [2, 4, 6] },
-                    { "id": 3, "lat": 55.55, "lon": 66.66, "timesteps": [1, 2, 3] }
+                    { "lat": 11.11, "lon": 22.22, "timesteps": [1, 3, 5] },
+                    { "lat": 33.33, "lon": 44.44, "timesteps": [2, 4, 6] },
+                    { "lat": 55.55, "lon": 66.66, "timesteps": [1, 2, 3] }
                 ]
             }
         }
@@ -161,8 +161,8 @@ Extracting at every step, batching at most 20 steps per output file
                 "dataid": "test_append_batch",
                 "delta": 0.75,
                 "points": [
-                    { "id": 1, "lat": 11.11, "lon": 22.22 },
-                    { "id": 2, "lat": 33.33, "lon": 44.44 }
+                    { "lat": 11.11, "lon": 22.22 },
+                    { "lat": 33.33, "lon": 44.44 }
                 ]
             }
         }
