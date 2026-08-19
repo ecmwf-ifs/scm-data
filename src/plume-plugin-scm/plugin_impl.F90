@@ -496,8 +496,9 @@ subroutine scm_setup(plugin_config, model_data)
 
 STOP_PLUGIN_TIMER("scm_setup.alloc_columns")
 
-! initialise the NetCDF output writer (append_output, append_output_nsteps and
-! the output directory; run_every/init_step define the output batch windows)
+! initialise the NetCDF output writer (append_output, append_output_nsteps,
+! dataid and the output directory; run_every/init_step define the output
+! batch windows)
 START_PLUGIN_TIMER("scm_setup.nc_init")
 call nc_writer%init(plugin_cfg)
 STOP_PLUGIN_TIMER("scm_setup.nc_init")
@@ -708,7 +709,7 @@ STOP_PLUGIN_TIMER("scm_run.process_plume_fields")
 
 START_PLUGIN_TIMER("scm_run.write_netcdf")
 call nc_writer%write(myproc, NSTEP, locations, nb_locations, &
-                   & PVAH, PVBH, plugin_cfg%get_dataid(), nlev, INFO, extract_mgr)
+                   & PVAH, PVBH, nlev, INFO, extract_mgr)
 STOP_PLUGIN_TIMER("scm_run.write_netcdf")
 
 call log%info("SCM-PLUGIN step completed !")
