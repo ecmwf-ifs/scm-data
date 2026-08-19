@@ -9,265 +9,222 @@
                 "delta": 6,
                 "points": [
                     {
-                        "id": 0,
                         "name": "Andorra",
+                        "description": "Capital of Andorra, in the Pyrenees",
                         "lat": 42.5,
                         "lon": 1.5165
                     },
                     {
-                        "id": 1,
                         "name": "Tirana",
                         "lat": 41.3275,
                         "lon": 19.8189
                     },
                     {
-                        "id": 2,
                         "name": "Vienna",
                         "lat": 48.2,
                         "lon": 16.3666
                     },
                     {
-                        "id": 3,
                         "name": "Sarajevo",
                         "lat": 43.85,
                         "lon": 18.383
                     },
                     {
-                        "id": 4,
                         "name": "Brussels",
                         "lat": 50.8333,
                         "lon": 4.3333
                     },
                     {
-                        "id": 5,
                         "name": "Sofia",
                         "lat": 42.6833,
                         "lon": 23.3167
                     },
                     {
-                        "id": 6,
                         "name": "Minsk",
                         "lat": 53.9,
                         "lon": 27.5666
                     },
                     {
-                        "id": 7,
                         "name": "Bern",
                         "lat": 46.9167,
                         "lon": 7.467
                     },
                     {
-                        "id": 8,
                         "name": "Nicosia",
                         "lat": 35.1667,
                         "lon": 33.3666
                     },
                     {
-                        "id": 9,
                         "name": "Prague",
                         "lat": 50.0833,
                         "lon": 14.466
                     },
                     {
-                        "id": 10,
                         "name": "Berlin",
                         "lat": 52.5218,
                         "lon": 13.4015
                     },
                     {
-                        "id": 11,
                         "name": "Copenhagen",
                         "lat": 55.6786,
                         "lon": 12.5635
                     },
                     {
-                        "id": 12,
                         "name": "Tallinn",
                         "lat": 59.4339,
                         "lon": 24.728
                     },
                     {
-                        "id": 13,
                         "name": "Madrid",
                         "lat": 40.4,
                         "lon": -3.6834
                     },
                     {
-                        "id": 14,
                         "name": "Helsinki",
                         "lat": 60.1756,
                         "lon": 24.9341
                     },
                     {
-                        "id": 15,
                         "name": "Paris",
                         "lat": 48.8667,
                         "lon": 2.3333
                     },
                     {
-                        "id": 16,
                         "name": "London",
                         "lat": 51.5072,
                         "lon": -0.1275
                     },
                     {
-                        "id": 17,
                         "name": "Athens",
                         "lat": 37.9833,
                         "lon": 23.7333
                     },
                     {
-                        "id": 18,
                         "name": "Zagreb",
                         "lat": 45.8,
                         "lon": 16
                     },
                     {
-                        "id": 19,
                         "name": "Budapest",
                         "lat": 47.5,
                         "lon": 19.0833
                     },
                     {
-                        "id": 20,
                         "name": "Dublin",
                         "lat": 53.3331,
                         "lon": -6.2489
                     },
                     {
-                        "id": 21,
                         "name": "Reykjavik",
                         "lat": 64.15,
                         "lon": -21.95
                     },
                     {
-                        "id": 22,
                         "name": "Rome",
                         "lat": 41.896,
                         "lon": 12.4833
                     },
                     {
-                        "id": 23,
                         "name": "Vaduz",
                         "lat": 47.1337,
                         "lon": 9.5167
                     },
                     {
-                        "id": 24,
                         "name": "Vilnius",
                         "lat": 54.6834,
                         "lon": 25.3166
                     },
                     {
-                        "id": 25,
                         "name": "Luxembourg",
                         "lat": 49.6117,
                         "lon": 6.13
                     },
                     {
-                        "id": 26,
                         "name": "Riga",
                         "lat": 56.95,
                         "lon": 24.1
                     },
                     {
-                        "id": 27,
                         "name": "Monaco",
                         "lat": 43.7396,
                         "lon": 7.4069
                     },
                     {
-                        "id": 28,
                         "name": "Chisinau",
                         "lat": 47.005,
                         "lon": 28.8577
                     },
                     {
-                        "id": 29,
                         "name": "Podgorica",
                         "lat": 42.466,
                         "lon": 19.2663
                     },
                     {
-                        "id": 30,
                         "name": "Skopje",
                         "lat": 42,
                         "lon": 21.4335
                     },
                     {
-                        "id": 31,
                         "name": "Valletta",
                         "lat": 35.8997,
                         "lon": 14.5147
                     },
                     {
-                        "id": 32,
                         "name": "Amsterdam",
                         "lat": 52.35,
                         "lon": 4.9166
                     },
                     {
-                        "id": 33,
                         "name": "Oslo",
                         "lat": 59.9167,
                         "lon": 10.75
                     },
                     {
-                        "id": 34,
                         "name": "Warsaw",
                         "lat": 52.25,
                         "lon": 21
                     },
                     {
-                        "id": 35,
                         "name": "Lisbon",
                         "lat": 38.7227,
                         "lon": -9.1449
                     },
                     {
-                        "id": 36,
                         "name": "Bucharest",
                         "lat": 44.4334,
                         "lon": 26.0999
                     },
                     {
-                        "id": 37,
                         "name": "Belgrade",
                         "lat": 44.8186,
                         "lon": 20.468
                     },
                     {
-                        "id": 38,
                         "name": "Moscow",
                         "lat": 55.7522,
                         "lon": 37.6155
                     },
                     {
-                        "id": 39,
                         "name": "Stockholm",
                         "lat": 59.3508,
                         "lon": 18.0973
                     },
                     {
-                        "id": 40,
                         "name": "Ljubljana",
                         "lat": 46.0553,
                         "lon": 14.515
                     },
                     {
-                        "id": 41,
                         "name": "Bratislava",
                         "lat": 48.15,
                         "lon": 17.117
                     },
                     {
-                        "id": 42,
                         "name": "San Marino",
                         "lat": 43.9172,
                         "lon": 12.4667
                     },
                     {
-                        "id": 43,
                         "name": "Kiev",
                         "lat": 50.4334,
                         "lon": 30.5166

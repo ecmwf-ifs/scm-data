@@ -11,8 +11,8 @@
                 "dataid": "test_append_batch_stride",
                 "delta" : 0.75,
                 "points": [
-                    {"id": 1, "lat": 51.61, "lon": -0.81},
-                    {"id": 2, "lat": 51.14, "lon": -1.44}
+                    { "lat": 51.61, "lon": -0.81},
+                    { "lat": 51.14, "lon": -1.44}
                 ]
             }
         }

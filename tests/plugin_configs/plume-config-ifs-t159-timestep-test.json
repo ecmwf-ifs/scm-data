@@ -8,11 +8,11 @@
                 "dataid": "test_timestep_filter",
                 "delta" : 0.75,
                 "points": [
-                    {"id": 1, "lat": 51.61, "lon": -0.81, "timesteps": [1, 3, 5]},
-                    {"id": 2, "lat": 51.14, "lon": -1.44, "timesteps": [2, 4, 6]},
-                    {"id": 3, "lat": 51.62, "lon": -1.08, "timesteps": [1, 2, 3]},
-                    {"id": 4, "lat": 52.5,  "lon": -1.0,  "timesteps": [4, 5, 6]},
-                    {"id": 5, "lat": 50.92, "lon": -0.47, "timesteps": [1, 2, 3, 4, 5, 6]}
+                    { "lat": 51.61, "lon": -0.81, "timesteps": [1, 3, 5]},
+                    { "lat": 51.14, "lon": -1.44, "timesteps": [2, 4, 6]},
+                    { "lat": 51.62, "lon": -1.08, "timesteps": [1, 2, 3]},
+                    { "lat": 52.5,  "lon": -1.0,  "timesteps": [4, 5, 6]},
+                    { "lat": 50.92, "lon": -0.47, "timesteps": [1, 2, 3, 4, 5, 6]}
                 ]
             }
         }
