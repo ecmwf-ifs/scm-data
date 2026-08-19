@@ -48,6 +48,9 @@ module scm_nc_output_mod
     private
     character(len=:), allocatable :: output_dir
     logical             :: has_output_dir = .false.
+    ! Dataset identifier written into each NetCDF file, cached from the
+    ! configuration handler at init so no per-step lookup is needed.
+    character(len=:), allocatable :: dataid
     logical             :: append_output  = .true.
     ! Maximum number of steps (time records) batched into one file.
     ! <= 0 means "no limit": a single file per (proc, location).
@@ -66,9 +69,10 @@ contains
 
 
   ! Everything the writer needs comes from the configuration handler: the
-  ! append_output / append_output_nsteps options, and run_every / init_step,
-  ! which determine at which steps this writer is called and hence how the
-  ! batch windows are laid out when append_output_nsteps is used.
+  ! append_output / append_output_nsteps options, the dataid and the output
+  ! directory, and run_every / init_step, which determine at which steps this
+  ! writer is called and hence how the batch windows are laid out when
+  ! append_output_nsteps is used.
   subroutine output_writer_init(self, cfg)
     class(output_writer),  intent(inout) :: self
     type(config_handler),  intent(in)    :: cfg
@@ -123,6 +127,10 @@ contains
     endif
     call log%info(msg)
 
+    ! Dataset identifier: cached once here (get_dataid() allocates a fresh
+    ! string on every call, so it must not be called per step).
+    self%dataid = cfg%get_dataid()
+
     ! Output directory: resolved by the configuration handler from the
     ! environment (see PLUME_PLUGINS_OUTPUT_DIR).
     self%has_output_dir = cfg%has_output_dir()
@@ -140,7 +148,7 @@ contains
 
 
   subroutine output_writer_write(self, myproc, nstep, locations, nb_locations, &
-                                 pvah, pvbh, dataid, nlev, info, extract_mgr)
+                                 pvah, pvbh, nlev, info, extract_mgr)
     class(output_writer),      intent(inout) :: self
     integer(kind=JPIM),        intent(in)    :: myproc
     integer(kind=JPIM),        intent(in)    :: nstep
@@ -148,7 +156,6 @@ contains
     type(TLOCATION),           intent(inout) :: locations(nb_locations)
     real(kind=JPRB),           intent(in)    :: pvah(0:nlev)
     real(kind=JPRB),           intent(in)    :: pvbh(0:nlev)
-    character(len=*),          intent(in)    :: dataid
     integer(kind=JPIM),        intent(in)    :: nlev
     type(TINFO),               intent(in)    :: info
     type(extraction_manager),  intent(in)    :: extract_mgr
@@ -188,7 +195,7 @@ contains
 
       ! setup the output NetCDF file (creates if missing, opens if present)
       START_PLUGIN_TIMER_H(ih_nc_open)
-      call SU_WRT_NC(nc_fullpath, pvah, pvbh, dataid, locations(iloc)%IFILE_ID, nlev)
+      call SU_WRT_NC(nc_fullpath, pvah, pvbh, self%dataid, locations(iloc)%IFILE_ID, nlev)
       STOP_PLUGIN_TIMER_H(ih_nc_open)
 
       ! write data to the NetCDF file
@@ -211,6 +218,7 @@ contains
 
     self%has_output_dir  = .false.
     if (allocated(self%output_dir)) deallocate(self%output_dir)
+    if (allocated(self%dataid))     deallocate(self%dataid)
     self%nsteps_per_file = 0
     self%step_stride     = 1
     self%anchor_step     = 0
