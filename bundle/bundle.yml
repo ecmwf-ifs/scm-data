@@ -2,7 +2,7 @@
 ### Bundle
 
 name    : scm-data-bundle
-version : 0.4.0
+version : 0.6.0
 cmake   : CMAKE_LINK_DEPENDS_NO_SHARED=ON
           ENABLE_OMP=ON
           ENABLE_SINGLE_PRECISION=OFF
