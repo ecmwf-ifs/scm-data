@@ -58,7 +58,7 @@ REAL(KIND=JPRB)    :: zqs(klev), zrh(klev), ztheta(klev), ztheta_e(klev), &
 INTEGER(KIND=JPIM) :: j, jk, &
             &idimid, idimlen, ivarid, istatus, &
             &istart1, istart2(2), &
-            &icount1, icount2(2), icount3(2), icount4(2)
+            &icount1, icount2(2), icount3(2), icount4(2), icount5(2)
 
 #include "netcdf.inc"
 
@@ -90,10 +90,12 @@ istart2(1) = 1          ! 2-d variables - dim 1: starting index
 icount2(1) = klev      !      -"-               written indices
 icount3(1) = klev+1    !      -"-               written indices
 icount4(1) = ncss       !      -"-               written indices
+icount5(1) = ncsi       !      -"-               written indices
 istart2(2) = idimlen+1  ! 2-d variables - dim 2: starting index
 icount2(2) = 1          !      -"-               written indices
 icount3(2) = 1          !      -"-               written indices
 icount4(2) = 1          !      -"-               written indices
+icount5(2) = 1          !      -"-               written indices
 
 !        2.   diagnostic variable definitions
 
@@ -197,6 +199,7 @@ call ncdf_varwrite1c (incid, 1, istart1,icount1, 'mom_rough',      ILOCATION%PP%
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'heat_rough',     exp(ILOCATION%PP%plsrh))
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'albedo',         ILOCATION%PP%pal)
 !call ncdf_varwrite1c (incid, 1, istart1,icount1, 'emiss',          plwe)
+! could also use poro
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'orog',           ILOCATION%PP%pz/rg)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'sdfor',          ILOCATION%PP%psdfor)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'sdor',           ILOCATION%PP%psdor)
@@ -217,7 +220,14 @@ call ncdf_varwrite1c (incid, 1, istart1,icount1, 'low_veg_type',   ILOCATION%PP%
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'high_veg_type', ILOCATION%PP%ptvh)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'sfc_sens_flx',   ILOCATION%PP%psshf)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'sfc_lat_flx',    ILOCATION%PP%pslhf)
-  
+
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'aluvpi',          ILOCATION%PP%paluvi)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'aluvpv',          ILOCATION%PP%paluvv)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'aluvpg',          ILOCATION%PP%paluvg)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'alnipi',          ILOCATION%PP%palnii)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'alnipv',          ILOCATION%PP%palniv)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'alnipg',          ILOCATION%PP%palnig)
+
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'aluvp',          ILOCATION%PP%paluvp)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'aluvd',          ILOCATION%PP%paluvd)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'alnip',          ILOCATION%PP%palnip)
@@ -234,6 +244,9 @@ call ncdf_varwrite1c (incid, 1, istart1,icount1, 'tlt',             ILOCATION%PP
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'shf',             ILOCATION%PP%plakeshf)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'ict',             ILOCATION%PP%plakeict)
 call ncdf_varwrite1c (incid, 1, istart1,icount1, 'icd',             ILOCATION%PP%plakeicd)
+
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'cwe',             ILOCATION%PP%pwetlf)
+call ncdf_varwrite1c (incid, 1, istart1,icount1, 'cur',             ILOCATION%PP%purbv)
 
 !        5.   write column variables.
 
@@ -269,6 +282,11 @@ call ncdf_varwrite1c (incid, klev,   istart2,icount2, 'ccadv',     ILOCATION%PP%
 call ncdf_varwrite1c (incid, klev,   istart2,icount2, 'csadv',     ILOCATION%PP%psadv(1))
 call ncdf_varwrite1c (incid, klev,   istart2,icount2, 'cradv',     ILOCATION%PP%pradv(1))
 call ncdf_varwrite1c (incid, klev+1, istart2,icount3, 'etadotdpdeta',  ILOCATION%PP%petadotdpdeta(0))
+
+call ncdf_varwrite1c (incid, ncsi,   istart2,icount5, 'sd',   ILOCATION%PP%psdl(1))
+call ncdf_varwrite1c (incid, ncsi,   istart2,icount5, 'tsn',  ILOCATION%PP%ptsnl(1))
+call ncdf_varwrite1c (incid, ncsi,   istart2,icount5, 'rsn',  ILOCATION%PP%prsnl(1))
+call ncdf_varwrite1c (incid, ncsi,   istart2,icount5, 'lwcs', ILOCATION%PP%plwcsl(1))
 
 call ncdf_varwrite1c (incid, ncss,    istart2,icount4, 't_soil',   ILOCATION%PP%pstl(1))
 call ncdf_varwrite1c (incid, ncss,    istart2,icount4, 'q_soil',   ILOCATION%PP%pswl(1))

@@ -18,11 +18,13 @@ TYPE(TLOCATION), target, intent(inout) :: ilocation
 type(atlas_FieldSet), intent(in) :: gpfields
 
 
-INTEGER(KIND=JPIM) :: IPARAM, JFLD, ISIZE, knode, i
+INTEGER(KIND=JPIM) :: IPARAM, ILEV, JFLD, ISIZE, knode
 type(atlas_Field) :: field
 type(atlas_Metadata) :: metadata
 TYPE(TPARAM), POINTER :: PX
 
+! one atlas field per GRIB message (read_grib_scm): rank 1, one value per gridpoint; a
+! layered parameter arrives as one message per layer, its layer in the metadata 'level'
 REAL(KIND=JPRB),POINTER :: values(:)
 
 PX => ilocation%PP
@@ -35,6 +37,7 @@ DO JFLD=1,ISIZE
   metadata = field%metadata()
   call field%data(values)
   call metadata%get('paramId',iparam)
+  call metadata%get('level',ilev)
   SELECT CASE (iparam)
   CASE (139)
      PX%PSTL(1)=values(knode)
@@ -63,11 +66,23 @@ DO JFLD=1,ISIZE
   CASE (235)
      PX%PSKT  =values(knode)
   CASE (238)
-     PX%PTSN  =values(knode)
+     ! tsn: the single-level record (level 0) or snow layer ILEV (snowLayer, level 1..ncsi)
+     IF (ilev == 0) THEN
+        PX%PTSN = values(knode)
+     ELSE
+        call check_level(iparam, ilev, ncsi)
+        PX%PTSNL(ilev) = values(knode)
+     ENDIF
   CASE (32)
      PX%PASN  =values(knode)
   CASE (33)
-    PX%PRSN  =values(knode)
+     ! rsn: the single-level record (level 0) or snow layer ILEV (snowLayer, level 1..ncsi)
+     IF (ilev == 0) THEN
+        PX%PRSN = values(knode)
+     ELSE
+        call check_level(iparam, ilev, ncsi)
+        PX%PRSNL(ilev) = values(knode)
+     ENDIF
   CASE (172)
      write(*,*) ' land-sea mask ' , myproc, knode, values(knode)
      PX%PLSM  =values(knode)
@@ -143,10 +158,60 @@ DO JFLD=1,ISIZE
      PX%PLAKEICT=values(knode)
   CASE(228014)
      PX%PLAKEICD=values(knode)
+  CASE(210186)
+     PX%PALUVI=values(knode)
+  CASE(210187)
+     PX%PALUVV=values(knode)
+  CASE(210188)
+     PX%PALUVG=values(knode)
+  CASE(210189)
+     PX%PALNII=values(knode)
+  CASE(210190)
+     PX%PALNIV=values(knode)
+  CASE(210191)
+     PX%PALNIG=values(knode)
+  CASE(229007)
+     PX%PWETLF=values(knode)
+  CASE(229001)
+     PX%PURBV=values(knode)
+  CASE(129)
+     PX%PORO=values(knode)
+  CASE (260360)
+     ! sot - soil temperature: one message per layer, layer = metadata 'level'
+     call check_level(iparam, ilev, ncss)
+     PX%PSTL(ilev) = values(knode)
+  CASE (260199)
+     ! vsw - volumetric soil water: one message per layer, layer = metadata 'level'
+     call check_level(iparam, ilev, ncss)
+     PX%PSWL(ilev) = values(knode)
+  CASE (262024)
+     ! sit - sea-ice temperature: one message per layer, layer = metadata 'level'
+     call check_level(iparam, ilev, ncss)
+     PX%PTIA(ilev) = values(knode)
+  CASE (228141)
+     ! sd - snow mass per layer [kg m-2]: one message per layer, layer = metadata 'level'
+     call check_level(iparam, ilev, ncsi)
+     PX%PSDL(ilev) = values(knode)
+  CASE (228038)
+     ! lwcs - liquid water per snow layer [kg m-2]: one message per layer, layer = metadata 'level'
+     call check_level(iparam, ilev, ncsi)
+     PX%PLWCSL(ilev) = values(knode)
   CASE DEFAULT
-     WRITE(*,*)  ' FILLVAR, WARNING: UNKNOWN FIELD PARAMETER ',IPARAM
+     WRITE(*,*)  ' FILLVAR: WARNING: UNKNOWN FIELD PARAMETER ',IPARAM
   END SELECT
 
 ENDDO
+
+CONTAINS
+
+SUBROUTINE CHECK_LEVEL(KPARAM, KLEV, KMAX)
+! a layered record must carry its layer number 1..KMAX in 'level'; anything else would be
+! dropped or written out of bounds, so stop instead
+INTEGER(KIND=JPIM), intent(in) :: KPARAM, KLEV, KMAX
+IF (KLEV < 1 .OR. KLEV > KMAX) THEN
+  WRITE(*,*) ' FILLVAR: ERROR: paramId ', KPARAM, ' has level ', KLEV, ', outside the layers 1..', KMAX
+  CALL EXIT(1)
+ENDIF
+END SUBROUTINE CHECK_LEVEL
 
 END SUBROUTINE FILLVAR

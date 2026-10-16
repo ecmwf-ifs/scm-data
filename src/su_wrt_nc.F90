@@ -34,9 +34,9 @@ INTEGER(KIND=JPIM), intent(in) :: klev
 REAL*4    :: zv(0:klev)            ! for netcdf single precision
 !REAL(KIND=JPRB)            :: zv(0:klev)
 INTEGER(KIND=JPIM) i, &
- & nlevdid, nlevp1did, nlevsdid, ntimdid, nvarid,  &
+ & nlevdid, nlevp1did, nlevsdid, nlevidid, ntimdid, nvarid,  &
  &  idimid2(2), idimid3(2), idimid4(2), idimid5(2), &
- & ilev(klev), ilevp1(klev+1), ilevs(ncss), istatus, iaccur
+ & ilev(klev), ilevp1(klev+1), ilevs(ncss), ilevi(ncsi), istatus, iaccur
 logical   :: file_exist
 character (len=50) :: title
 
@@ -111,6 +111,8 @@ else
   call handle_err_nc(istatus)
   istatus = NF_DEF_DIM (incid, 'nlevs',   ncss,          nlevsdid)  !land/sea-ice
   call handle_err_nc(istatus)
+  istatus = NF_DEF_DIM (incid, 'nlevsn',  ncsi,          nlevidid)  !snow layers
+  call handle_err_nc(istatus)
   istatus = NF_DEF_DIM (incid, 'time',    NF_UNLIMITED,  ntimdid)   !time
   call handle_err_nc(istatus)
 !istatus = NF_DEF_DIM (incid, 'timestp', NF_UNLIMITED, ntimdid)   !time steps
@@ -127,6 +129,9 @@ else
 !        soil/sea-ice model levels
   call ncdf_varsetup1c (incid, NF_INT, 1, nlevsdid, &
     & 'nlevs',  'Soil/Sea-Ice Model Levels',     'count')
+! snow model
+  call ncdf_varsetup1c (incid, NF_INT, 1, nlevidid, &
+    & 'nlevsn', 'Snow Layers',                   'count')
 !        time
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, &
     & 'time',   'Time',                          'seconds')
@@ -142,6 +147,8 @@ else
   idimid3(2) = ntimdid
   idimid4(1) = nlevsdid
   idimid4(2) = ntimdid
+  idimid5(1) = nlevidid
+  idimid5(2) = ntimdid
 
   call ncdf_varsetup1c (incid, NF_INT, 1, ntimdid, &
     & 'date',  'Date',      'yyyymmdd')
@@ -252,6 +259,16 @@ else
   call ncdf_varsetup1c (incid, iaccur, 2, idimid4, &
     'q_soil'          ,'Soil Moisture'                ,'m of water')
 
+  call ncdf_varsetup1c (incid, iaccur, 2, idimid5, &
+    'sd'              ,'Snow depth water equivalent'  ,'kg m**-2')
+  call ncdf_varsetup1c (incid, iaccur, 2, idimid5, &
+    'tsn'             ,'Temperature of snow layer'    ,'K')
+  call ncdf_varsetup1c (incid, iaccur, 2, idimid5, &
+    'rsn'             ,'Snow density'                 ,'kg m**-3')
+  call ncdf_varsetup1c (incid, iaccur, 2, idimid5, &
+    'lwcs'            ,'Liquid water content in snow pack','kg m**-2')
+
+
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, &
     'lsm'             ,'Land-Sea Mask'                ,'-')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, &
@@ -277,6 +294,19 @@ else
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'anor', 'Orography - AN', '')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'slor', 'Orography - SL', '')
 
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'aluvpi', &
+    & 'UV visible albedo for direct radiation, isotropic component (climatological)', '(0 - 1)')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'aluvpv', &
+    & 'UV visible albedo for direct radiation, volumetric component (climatological)', '(0 - 1)')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'aluvpg', &
+    & 'UV visible albedo for direct radiation, geometric component (climatological)', '(0 - 1)')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'alnipi', &
+    & 'Near IR albedo for direct radiation, isotropic component (climatological)', '(0 - 1)')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'alnipv', &
+    & 'Near IR albedo for direct radiation, volumetric component (climatological)', '(0 - 1)')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'alnipg', &
+    & 'Near IR albedo for direct radiation, geometric component (climatological)', '(0 - 1)')
+
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'aluvp' , 'Albedo UV direct'      , '1')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'aluvd' , 'Albedo UV diffuse'     , '1')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'alnip' , 'Albedo near IR direct' , '1')
@@ -294,6 +324,9 @@ else
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'shf'    , 'Lake shape factor', '1')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'ict'    , 'Lake ice temperature', 'K')
   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'icd'    , 'Lake ice depth', 'm')
+
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'cwe'    , 'Wetland cover', '1')
+  call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, 'cur'    , 'Urban cover', '1')
 
 !   call ncdf_varsetup1c (incid, iaccur, 1, ntimdid, &
 !    'emiss'           ,'Background LW Emissivity'     ,'1')
@@ -331,6 +364,15 @@ else
   istatus = NF_INQ_VARID   (incid, 'nlevs', nvarid)
   call handle_err_nc(istatus)
   istatus = NF_PUT_VAR_INT (incid, nvarid, ilevs)
+  call handle_err_nc(istatus)
+
+!        4.4.1   snow model levels
+  DO i=1,ncsi
+    ilevi(i)=i
+  ENDDO
+  istatus = NF_INQ_VARID   (incid, 'nlevsn', nvarid)
+  call handle_err_nc(istatus)
+  istatus = NF_PUT_VAR_INT (incid, nvarid, ilevi)
   call handle_err_nc(istatus)
 
 !        4.5   parameters of vertical coordinate

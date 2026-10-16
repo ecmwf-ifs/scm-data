@@ -27,12 +27,18 @@ INTEGER, PARAMETER :: JPRD = SELECTED_REAL_KIND(13,300)
 
 INTEGER(KIND=JPIM), parameter :: ncss    = 4
 
+! snow
+INTEGER(KIND=JPIM), parameter :: ncsi    = 5
+
 type TPARAM
 !  sequence
   REAL(KIND=JPRB), allocatable :: PU(:)   ,PV(:)   ,PT(:)   ,PQ(:)   ,PW(:)  , &
    & PA(:)   ,PL(:)   ,PI(:)   ,PR(:), PS(:)
 
+! soil
   REAL(KIND=JPRB) :: PSTL(ncss) ,PSWL(ncss) ,PTIA(ncss)
+! snow
+  REAL(KIND=JPRB) :: PSDL(ncsi) ,PTSNL(ncsi) ,PRSNL(ncsi), PLWCSL(ncsi)
 
   REAL(KIND=JPRB) :: PSD    ,PSRC   ,PSKT   ,PCI    ,PSST  ,PLNSP, PSP, PSPL, PSPM, &
    & PTSN   ,PASN   ,PRSN   ,&
@@ -42,7 +48,8 @@ type TPARAM
    & PSSHF  ,PSLHF,&
    & PALUVP, PALUVD, PALNIP, PALNID, PLAILC, PLAIHC, PSOTY,&
    & PLAKEFR, PLAKEDL, PLAKEMLT, PLAKEMLD, PLAKEBLT, &
-   & PLAKETLT, PLAKESHF, PLAKEICT, PLAKEICD
+   & PLAKETLT, PLAKESHF, PLAKEICT, PLAKEICD, &
+   & PALUVI,PALUVV,PALUVG,PALNII,PALNIV,PALNIG,PWETLF,PURBV, PORO
   
   REAL(KIND=JPRB), allocatable :: PUG(:)  ,PVG(:)
   REAL(KIND=JPRB), allocatable :: PTADV(:),PQADV(:),PUADV(:),PVADV(:), &
